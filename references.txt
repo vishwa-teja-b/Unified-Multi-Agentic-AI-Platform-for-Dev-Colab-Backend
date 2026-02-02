@@ -1,0 +1,3 @@
+https://fastapi.tiangolo.com/tutorial/sql-databases/#create-models
+
+https://github.com/ArjanCodes/examples/blob/main/2024/sqlmodel/basic_example_sqlmodel.py
