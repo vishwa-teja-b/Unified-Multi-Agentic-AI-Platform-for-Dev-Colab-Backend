@@ -12,3 +12,6 @@ from fastapi import Request
 
 def get_profiles_collection(request: Request):
     return request.app.state.db["profiles"]
+
+def get_projects_collection(request: Request):
+    return request.app.state.db["projects"]

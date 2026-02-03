@@ -1,37 +1,17 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
-from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime
 from app.dependencies.collections import get_profiles_collection
+from app.dependencies.auth import get_current_user_id
 from app.dto.profile_schema import ProfileCreateRequest, ProfileResponse
-from app.config.jwt_config import decode_token
 from app.vector_stores.pinecone_db import index_profile
 
 profile_router = APIRouter(prefix="/api/profiles", tags=["Profiles Creation and Skill Indexing"])
-
-# OAuth2 scheme - enables Swagger's "Authorize" button
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
-
-
-
-def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
-    """Extract user_id from JWT token"""
-    print(f"🔍 DEBUG: Token received: {token[:30] if token else 'NONE'}...")
-    try:
-        payload = decode_token(token)
-        print(f"✅ DEBUG: User ID extracted: {payload['sub']}")
-        return int(payload["sub"])
-    except Exception as e:
-        print(f"❌ DEBUG: Token error: {e}")
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-
 
 
 # Simple test endpoint to verify auth works
 @profile_router.get("/test-auth")
 def test_auth(user_id: int = Depends(get_current_user_id)):
     return {"message": "Auth works!", "user_id": user_id}
-
 
 
 @profile_router.post("/create-profile", response_model=ProfileResponse, status_code=201)
