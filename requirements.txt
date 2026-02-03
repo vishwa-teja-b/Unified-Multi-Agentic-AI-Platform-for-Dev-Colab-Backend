@@ -25,3 +25,4 @@ asyncmy
 sqlmodel
 pymysql
 fastapi-mail
+langchain-pinecone

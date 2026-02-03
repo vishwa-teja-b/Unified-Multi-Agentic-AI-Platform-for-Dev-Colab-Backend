@@ -15,6 +15,7 @@ class ProfileCreateRequest(BaseModel):
     bio: str
     phone: Optional[str] = None
     profile_picture: Optional[str] = None
+    auth_user_id: int
     
     # Location
     city: Optional[str] = None
@@ -60,6 +61,7 @@ class ProfileResponse(BaseModel):
     bio: str
     phone: Optional[str] = None
     profile_picture: Optional[str] = None
+    auth_user_id: int
     
     # Location
     city: Optional[str] = None

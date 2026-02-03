@@ -4,11 +4,14 @@ from datetime import datetime
 from app.dependencies.collections import get_profiles_collection
 from app.dto.profile_schema import ProfileCreateRequest, ProfileResponse
 from app.config.jwt_config import decode_token
+from app.vector_stores.pinecone_db import index_profile
 
 profile_router = APIRouter(prefix="/api/profiles", tags=["Profiles Creation and Skill Indexing"])
 
 # OAuth2 scheme - enables Swagger's "Authorize" button
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+
 
 def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
     """Extract user_id from JWT token"""
@@ -22,10 +25,13 @@ def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+
+
 # Simple test endpoint to verify auth works
 @profile_router.get("/test-auth")
 def test_auth(user_id: int = Depends(get_current_user_id)):
     return {"message": "Auth works!", "user_id": user_id}
+
 
 
 @profile_router.post("/create-profile", response_model=ProfileResponse, status_code=201)
@@ -55,7 +61,13 @@ async def create_profile(
     # Convert MongoDB _id to string for response
     created_profile["id"] = str(created_profile.pop("_id"))
 
+    # Index the profile in Pinecone
+    index_profile(created_profile)
+
     return ProfileResponse(**created_profile)
+
+
+
 
 @profile_router.get("/profile", response_model = ProfileResponse, status_code=200)
 async def get_profile(request: Request, auth_user_id: int = Depends(get_current_user_id)):
@@ -65,6 +77,9 @@ async def get_profile(request: Request, auth_user_id: int = Depends(get_current_
         raise HTTPException(status_code=404, detail="Profile not found")
     profile["id"] = str(profile.pop("_id"))
     return ProfileResponse(**profile)
+
+
+
 
 @profile_router.patch("/profile-update", response_model=ProfileResponse, status_code=200)
 async def update_profile(
@@ -94,4 +109,7 @@ async def update_profile(
     
     # Convert MongoDB _id to string for response
     updated_profile["id"] = str(updated_profile.pop("_id"))
+
+    index_profile(updated_profile)  # Re-index with new skills
+
     return ProfileResponse(**updated_profile)
