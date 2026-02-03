@@ -23,16 +23,24 @@
 - **Token Refresh** — Seamless session management
 - **Background Cleanup** — Auto-purges expired OTPs every 15 minutes
 
-### 👤 Profile Management (Phase 2) ✨ NEW
+### 👤 Profile Management (Phase 2)
 - **Create Profile** — Multi-step profile wizard with skills & interests
 - **Get Profile** — Retrieve authenticated user's profile
 - **Update Profile** — Partial profile updates
-- **OAuth2 Security** — Protected endpoints with JWT bearer tokens
+- **Skill Indexing** — Profiles indexed in Pinecone for semantic search
+
+### 📂 Projects (Phase 3) ✨ NEW
+- **Create Project** — Define project with skills, features, team size
+- **Get My Projects** — List all user's projects
+- **Get Project by ID** — Retrieve single project details
+- **Update Project** — Modify project fields
+- **Delete Project** — Remove project
 
 ### 🏗️ Architecture
 - **Framework:** FastAPI with async/await support
 - **Auth Database:** MySQL (Aiven Cloud) with SQLModel ORM
-- **Profile Database:** MongoDB (Atlas) with PyMongo async
+- **App Database:** MongoDB (Atlas) with PyMongo async
+- **Vector Store:** Pinecone with HuggingFace embeddings
 - **Security:** HS256 JWT tokens, bcrypt password hashing, OAuth2PasswordBearer
 - **Email:** FastAPI-Mail with Gmail SMTP
 
@@ -54,23 +62,30 @@ backend/
 │   │   └── init_db.py          # Table creation on startup
 │   │
 │   ├── dependencies/
+│   │   ├── auth.py             # JWT auth dependency (shared)
 │   │   └── collections.py      # MongoDB collection getters
 │   │
 │   ├── dto/
-│   │   └── profile_schema.py   # Profile request/response DTOs
+│   │   ├── profile_schema.py   # Profile request/response DTOs
+│   │   └── project_schema.py   # Project request/response DTOs
 │   │
 │   ├── models/
 │   │   ├── user.py             # User model (MySQL)
 │   │   ├── profiles.py         # Profile model (MongoDB)
+│   │   ├── projects.py         # Project model (MongoDB)
 │   │   ├── password_reset_token.py  # OTP storage
 │   │   └── schemas.py          # Auth request/response schemas
 │   │
 │   ├── routers/
 │   │   ├── auth.py             # Authentication endpoints
-│   │   └── profiles.py         # Profile CRUD endpoints
+│   │   ├── profiles.py         # Profile CRUD endpoints
+│   │   └── projects.py         # Project CRUD endpoints
 │   │
 │   ├── services/
 │   │   └── mail_service.py     # Email sending & OTP generation
+│   │
+│   ├── vector_stores/
+│   │   └── pinecone_db.py      # Pinecone vector store integration
 │   │
 │   └── main.py                 # FastAPI app & lifespan events
 │
@@ -99,6 +114,15 @@ backend/
 | `GET` | `/api/profiles/profile` | 🔒 | Get authenticated user's profile |
 | `PATCH` | `/api/profiles/profile-update` | 🔒 | Update profile fields |
 | `GET` | `/api/profiles/test-auth` | 🔒 | Test authentication |
+
+### Projects (🔒 Protected)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/projects/create-project` | 🔒 | Create new project |
+| `GET` | `/api/projects/my-projects` | 🔒 | List user's projects |
+| `GET` | `/api/projects/project/{id}` | 🔒 | Get single project |
+| `PATCH` | `/api/projects/project/{id}` | 🔒 | Update project |
+| `DELETE` | `/api/projects/project/{id}` | 🔒 | Delete project |
 
 ### Example: Register User
 ```bash
@@ -237,18 +261,38 @@ The application includes a background worker that automatically cleans up:
 }
 ```
 
+### MongoDB: Projects Collection
+```json
+{
+  "_id": "ObjectId",
+  "auth_user_id": 1,
+  "title": "Mental Health Mood Tracker",
+  "category": "Mobile",
+  "description": "An app for daily mood logging...",
+  "features": ["Mood logging", "Journaling", "Analytics"],
+  "required_skills": ["React Native", "Node.js", "MongoDB"],
+  "team_size": { "min": 2, "max": 4 },
+  "complexity": "Medium",
+  "estimated_duration": "2-3 months",
+  "status": "Open",
+  "team_members": [],
+  "created_at": "2026-02-03T13:50:33Z"
+}
+```
+
 ---
 
 ## 🚧 Roadmap
 
 - [x] Phase 1: Authentication system
-- [x] Phase 2: User profiles (MongoDB) ✅
-- [ ] Phase 3: AI Agent — Skill Matcher (Pinecone)
-- [ ] Phase 3: AI Agent — Team Formation
-- [ ] Phase 3: AI Agent — Project Planner
-- [ ] Phase 4: Real-time collaboration (WebSocket)
-- [ ] Phase 5: Code editor integration
-- [ ] Phase 5: Whiteboard (tldraw)
+- [x] Phase 2: User profiles + Pinecone skill indexing ✅
+- [x] Phase 3: Projects CRUD ✅ NEW
+- [ ] Phase 4: AI Agent — Skill Matcher (find developers)
+- [ ] Phase 4: AI Agent — Team Formation
+- [ ] Phase 5: AI Agent — Project Planner
+- [ ] Phase 6: Real-time collaboration (WebSocket)
+- [ ] Phase 7: Code editor integration
+- [ ] Phase 7: Whiteboard (tldraw)
 
 ---
 
