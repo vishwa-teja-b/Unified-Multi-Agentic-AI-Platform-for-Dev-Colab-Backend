@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime
 from app.dependencies.collections import get_profiles_collection
-from dto.profile_schema import ProfileCreateRequest, ProfileResponse
+from app.dto.profile_schema import ProfileCreateRequest, ProfileResponse
 from app.config.jwt_config import decode_token
 
 profile_router = APIRouter(prefix="/api/profiles", tags=["Profiles Creation and Skill Indexing"])
