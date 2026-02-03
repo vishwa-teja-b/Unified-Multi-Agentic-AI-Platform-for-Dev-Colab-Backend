@@ -9,6 +9,7 @@ from app.models.password_reset_token import PasswordResetToken
 def init_db():
     """Create all tables in the database"""
     SQLModel.metadata.create_all(engine)
+    print("✅ MySQL connection established")
     print("✅ Database tables created: User, PasswordResetToken")
 
 

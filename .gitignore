@@ -9,3 +9,5 @@
 /app/services/__pycache__
 /app/websockets/__pycache__
 /app/db/__pycache__
+/app/dependencies/__pycache__
+/app/dto/__pycache__

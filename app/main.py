@@ -6,11 +6,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.db.init_db import init_db
 from dotenv import load_dotenv
-from app.routers.auth import router
+from app.routers.auth import auth_router
+from app.routers.profiles import profile_router
 from sqlmodel import Session, select, or_
 from datetime import datetime
+from app.db.mongo import create_mongo_client
+import os
 
 load_dotenv()
+
+MONGO_URI = os.getenv("MONGODB_URL")
+MONGODB_NAME = os.getenv("MONGODB_DB_NAME")
 
 async def cleanup_used_otps():
     """Background worker that runs every 15 minutes to cleanup used OTPs"""
@@ -38,12 +44,22 @@ async def cleanup_used_otps():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()  # Creates tables on startup
+
+    mongo_client = create_mongo_client(MONGO_URI)
+    app.state.mongo_client = mongo_client
+    app.state.db = mongo_client[MONGODB_NAME]
+
+    print("MONGODB CONNECTION ESTABLISHED")
+    
     # Start background cleanup task
     cleanup_task = asyncio.create_task(cleanup_used_otps())
+
     yield
     # Cancel on shutdown
     cleanup_task.cancel()
+    mongo_client.close() # Close MongoDB connection
 
 app = FastAPI(lifespan=lifespan)
 
-app.include_router(router)
+app.include_router(auth_router)
+app.include_router(profile_router)

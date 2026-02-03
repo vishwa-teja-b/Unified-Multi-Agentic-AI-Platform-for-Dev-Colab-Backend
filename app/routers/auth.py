@@ -11,9 +11,9 @@ from app.models.password_reset_token import PasswordResetToken
 from app.db.mysql_connection import get_session
 
 
-router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+auth_router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
-@router.post("/register", response_model=MessageResponse)
+@auth_router.post("/register", response_model=MessageResponse)
 def register(data : UserRegisterRequest, session : Session = Depends(get_session)):
     existing = session.exec(select(User).where(User.email == data.email)).first()
 
@@ -37,7 +37,7 @@ def register(data : UserRegisterRequest, session : Session = Depends(get_session
         success=True
     )
 
-@router.post("/login", response_model=AuthResponse)
+@auth_router.post("/login", response_model=AuthResponse)
 def login(data : UserLoginRequest, session : Session = Depends(get_session)):
     existing = session.exec(select(User).where(User.email == data.email)).first()
 
@@ -72,7 +72,7 @@ def login(data : UserLoginRequest, session : Session = Depends(get_session)):
         )
     )
 
-@router.post("/refresh-token", response_model=TokenResponse)
+@auth_router.post("/refresh-token", response_model=TokenResponse)
 def refresh_token(data : RefreshTokenRequest, session : Session = Depends(get_session)):
     try:
         payload = decode_token(data.refresh_token)
@@ -101,7 +101,7 @@ def refresh_token(data : RefreshTokenRequest, session : Session = Depends(get_se
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60  # seconds
     )
 
-@router.post("/forgot-password", response_model=MessageResponse)
+@auth_router.post("/forgot-password", response_model=MessageResponse)
 async def forgot_password(data : ForgotPasswordRequest, session : Session = Depends(get_session)):
     user = session.exec(select(User).where(User.email == data.email)).first()
 
@@ -133,7 +133,7 @@ async def forgot_password(data : ForgotPasswordRequest, session : Session = Depe
         success=True
     )
 
-@router.post("/reset-password", response_model=MessageResponse)
+@auth_router.post("/reset-password", response_model=MessageResponse)
 def reset_password(data : ResetPasswordRequest, session : Session = Depends(get_session)):
     token = session.exec(select(PasswordResetToken).where(PasswordResetToken.otp == data.otp)).first()
 
