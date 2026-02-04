@@ -7,3 +7,5 @@ https://github.com/mongodb-developer/mongodb-pymongo-fastapi/blob/main/app.py
 https://www.mongodb.com/docs/languages/python/pymongo-driver/current/integrations/fastapi-integration/
 
 https://docs.langchain.com/oss/python/integrations/vectorstores/pinecone
+
+https://docs.langchain.com/oss/python/langchain/multi-agent

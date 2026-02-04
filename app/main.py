@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from app.routers.auth import auth_router
 from app.routers.profiles import profile_router
 from app.routers.projects import project_router
+from app.routers.agents import agent_router
 from sqlmodel import Session, select, or_
 from datetime import datetime
 from app.db.mongo import create_mongo_client
@@ -65,3 +66,4 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(project_router)
+app.include_router(agent_router)

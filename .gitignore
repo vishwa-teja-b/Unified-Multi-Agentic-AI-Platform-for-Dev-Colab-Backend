@@ -12,3 +12,4 @@
 /app/dependencies/__pycache__
 /app/dto/__pycache__
 /app/vector_stores/__pycache__
+/app/agents/tests
