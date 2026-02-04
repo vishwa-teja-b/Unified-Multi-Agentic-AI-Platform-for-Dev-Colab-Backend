@@ -29,18 +29,25 @@
 - **Update Profile** — Partial profile updates
 - **Skill Indexing** — Profiles indexed in Pinecone for semantic search
 
-### 📂 Projects (Phase 3) ✨ NEW
+### 📂 Projects (Phase 3)
 - **Create Project** — Define project with skills, features, team size
 - **Get My Projects** — List all user's projects
 - **Get Project by ID** — Retrieve single project details
 - **Update Project** — Modify project fields
 - **Delete Project** — Remove project
 
+### 🤖 AI Team Formation Agent (Phase 4) ✨ NEW
+- **Role Analysis** — LLM identifies required team roles from project requirements
+- **Skill Matching** — Semantic search finds candidates via Pinecone vectors
+- **Candidate Evaluation** — LLM scores candidates with reasoning
+- **LangGraph Workflow** — Multi-node agent orchestration with MongoDB checkpoints
+
 ### 🏗️ Architecture
 - **Framework:** FastAPI with async/await support
 - **Auth Database:** MySQL (Aiven Cloud) with SQLModel ORM
 - **App Database:** MongoDB (Atlas) with PyMongo async
 - **Vector Store:** Pinecone with HuggingFace embeddings
+- **AI Agents:** LangGraph + OpenRouter (free LLMs)
 - **Security:** HS256 JWT tokens, bcrypt password hashing, OAuth2PasswordBearer
 - **Email:** FastAPI-Mail with Gmail SMTP
 
@@ -79,7 +86,19 @@ backend/
 │   ├── routers/
 │   │   ├── auth.py             # Authentication endpoints
 │   │   ├── profiles.py         # Profile CRUD endpoints
-│   │   └── projects.py         # Project CRUD endpoints
+│   │   ├── projects.py         # Project CRUD endpoints
+│   │   └── agents.py           # AI Agent endpoints
+│   │
+│   ├── agents/
+│   │   ├── llm_config.py       # OpenRouter LLM configuration
+│   │   ├── utils.py            # JSON extraction utilities
+│   │   └── team_formation/
+│   │       ├── state.py        # LangGraph state definition
+│   │       ├── team_formation_graph.py  # Graph builder
+│   │       └── nodes/
+│   │           ├── role_analyzer.py     # LLM role analysis
+│   │           ├── skill_matcher.py     # Pinecone search
+│   │           └── llm_evaluator.py     # Candidate scoring
 │   │
 │   ├── services/
 │   │   └── mail_service.py     # Email sending & OTP generation
@@ -123,6 +142,11 @@ backend/
 | `GET` | `/api/projects/project/{id}` | 🔒 | Get single project |
 | `PATCH` | `/api/projects/project/{id}` | 🔒 | Update project |
 | `DELETE` | `/api/projects/project/{id}` | 🔒 | Delete project |
+
+### AI Agents (🔒 Protected)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/agents/team-formation` | 🔒 | Find & evaluate team candidates |
 
 ### Example: Register User
 ```bash
@@ -284,15 +308,15 @@ The application includes a background worker that automatically cleans up:
 
 ## 🚧 Roadmap
 
-- [x] Phase 1: Authentication system
+- [x] Phase 1: Authentication system ✅
 - [x] Phase 2: User profiles + Pinecone skill indexing ✅
-- [x] Phase 3: Projects CRUD ✅ NEW
-- [ ] Phase 4: AI Agent — Skill Matcher (find developers)
-- [ ] Phase 4: AI Agent — Team Formation
-- [ ] Phase 5: AI Agent — Project Planner
-- [ ] Phase 6: Real-time collaboration (WebSocket)
-- [ ] Phase 7: Code editor integration
-- [ ] Phase 7: Whiteboard (tldraw)
+- [x] Phase 3: Projects CRUD ✅
+- [x] Phase 4: AI Agent — Team Formation (LangGraph) ✅ NEW
+- [ ] Phase 5: Invitation System
+- [ ] Phase 6: AI Agent — Project Planner
+- [ ] Phase 7: Real-time collaboration (WebSocket)
+- [ ] Phase 8: Code editor integration
+- [ ] Phase 8: Whiteboard (tldraw)
 
 ---
 
