@@ -65,9 +65,11 @@ def index_profile(profile: dict):
         skills_text += " " + profile.get("experience_level", "")
 
         doc = Document(page_content=skills_text, metadata={
+            "name": profile.get("name", ""),
             "username": profile.get("username"),
             "availability_hours": profile.get("availability_hours"),
             "email": profile.get("email"),
+            "timezone": profile.get("timezone", "UTC")
         })
 
         vector_store = get_pinecone_vector_store()

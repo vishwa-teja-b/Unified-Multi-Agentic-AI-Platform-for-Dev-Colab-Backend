@@ -13,7 +13,7 @@ pydantic
 requests
 pyjwt
 sentence-transformers
-chromadb
+chromadb>=0.4.0
 pinecone
 langchain-huggingface
 langchain-text-splitters

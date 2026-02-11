@@ -7,6 +7,7 @@ class TeamFormationState(TypedDict):
     required_skills: List[str]
     team_size: int
     timeline: str
+    owner_timezone : str
     
     # Intermediate
     roles: List[dict]           # From role analyzer

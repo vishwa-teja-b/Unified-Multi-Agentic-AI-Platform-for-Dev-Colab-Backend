@@ -1,9 +1,11 @@
 from app.vector_stores.pinecone_db import get_pinecone_vector_store
 from ..state import TeamFormationState
+from app.utils.timezone_utils import filter_candidates_by_timezone
 
 
 async def skill_matcher(state: TeamFormationState) -> dict:
     vector_store = get_pinecone_vector_store()
+    owner_timezone = state.get("owner_timezone","UTC")
 
     all_candidates = []
 
@@ -24,11 +26,20 @@ async def skill_matcher(state: TeamFormationState) -> dict:
         for doc, score in results:
             all_candidates.append({
                 "role": role.get("role", ""),
-                "name": doc.metadata.get("name", ""),
+                "name": doc.metadata.get("name", "") or doc.metadata.get("username", "Unknown"),
+                "username": doc.metadata.get("username", ""),
                 "email": doc.metadata.get("email", ""),
                 "skills": doc.page_content,
                 "similarity_score" : score,
-                "availability_hours": doc.metadata.get("availability_hours", 0)
+                "availability_hours": doc.metadata.get("availability_hours", 0),
+                "timezone" : doc.metadata.get("timezone","UTC")
             })
+        
+        # FILTER CANDIDATES BY TIMEZONE (ADD THIS)
+    filtered_candidates = filter_candidates_by_timezone(
+        candidates=all_candidates,
+        owner_timezone=owner_timezone,
+        max_hour_difference=4.0  # Only include people within 4 hours
+    )
 
-    return {"candidates": all_candidates}
+    return {"candidates": filtered_candidates}

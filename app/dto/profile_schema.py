@@ -15,8 +15,8 @@ class ProfileCreateRequest(BaseModel):
     bio: str
     phone: Optional[str] = None
     profile_picture: Optional[str] = None
-    auth_user_id: int
-    
+    # auth_user_id removed as it comes from token
+
     # Location
     city: Optional[str] = None
     state: Optional[str] = None
@@ -55,13 +55,13 @@ class ProfileResponse(BaseModel):
     auth_user_id: int  # MySQL users.id
     
     # Basic Info
+    # Basic Info
     name: str
     username: str
     email: EmailStr
     bio: str
     phone: Optional[str] = None
     profile_picture: Optional[str] = None
-    auth_user_id: int
     
     # Location
     city: Optional[str] = None

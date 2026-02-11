@@ -13,6 +13,7 @@ from app.routers.agents import agent_router
 from sqlmodel import Session, select, or_
 from datetime import datetime
 from app.db.mongo import create_mongo_client
+from fastapi.middleware.cors import CORSMiddleware
 import os
 
 load_dotenv()
@@ -62,6 +63,16 @@ async def lifespan(app: FastAPI):
     mongo_client.close() # Close MongoDB connection
 
 app = FastAPI(lifespan=lifespan)
+
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development; restrict in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth_router)
 app.include_router(profile_router)

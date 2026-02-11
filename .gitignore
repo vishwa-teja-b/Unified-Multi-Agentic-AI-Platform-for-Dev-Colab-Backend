@@ -13,3 +13,6 @@
 /app/dto/__pycache__
 /app/vector_stores/__pycache__
 /app/agents/tests
+/app/utils/__pycache__
+/app/agents/team_formation/__pycache__
+/app/agents/team_formation/nodes/__pycache__

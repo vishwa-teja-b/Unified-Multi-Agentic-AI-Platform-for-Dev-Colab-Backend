@@ -8,6 +8,24 @@ from app.vector_stores.pinecone_db import index_profile
 profile_router = APIRouter(prefix="/api/profiles", tags=["Profiles Creation and Skill Indexing"])
 
 
+# Helper function to construct full URLs from usernames
+def construct_social_urls(profile: dict) -> dict:
+    """
+    Transform username-only social fields into full URLs.
+    Database stores just the username, API returns full URLs.
+    """
+    if profile.get("github") and not profile["github"].startswith("http"):
+        profile["github"] = f"https://github.com/{profile['github']}"
+    
+    if profile.get("linkedin") and not profile["linkedin"].startswith("http"):
+        profile["linkedin"] = f"https://linkedin.com/in/{profile['linkedin']}"
+    
+    if profile.get("portfolio") and not profile["portfolio"].startswith("http"):
+        profile["portfolio"] = f"https://{profile['portfolio']}"
+    
+    return profile
+
+
 # Simple test endpoint to verify auth works
 @profile_router.get("/test-auth")
 def test_auth(user_id: int = Depends(get_current_user_id)):
@@ -44,6 +62,9 @@ async def create_profile(
     # Index the profile in Pinecone
     index_profile(created_profile)
 
+    # Construct full URLs before returning
+    created_profile = construct_social_urls(created_profile)
+
     return ProfileResponse(**created_profile)
 
 
@@ -56,9 +77,32 @@ async def get_profile(request: Request, auth_user_id: int = Depends(get_current_
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     profile["id"] = str(profile.pop("_id"))
+    
+    # Construct full URLs before returning
+    profile = construct_social_urls(profile)
+    
     return ProfileResponse(**profile)
 
+@profile_router.get("/profile/{username}",response_model = ProfileResponse, status_code=200)
+async def get_profile_by_username(
+    request : Request,
+    username : str,
+    auth_user_id : int = Depends(get_current_user_id)
+):
+    profiles_collection = get_profiles_collection(request)
+    profile = await profiles_collection.find_one({"auth_user_id": auth_user_id})
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found... Login First")
 
+    other_profile = await profiles_collection.find_one({"username": username})
+    if not other_profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    other_profile["id"] = str(other_profile.pop("_id"))
+    
+    # Construct full URLs before returning
+    other_profile = construct_social_urls(other_profile)
+    
+    return ProfileResponse(**other_profile)
 
 
 @profile_router.patch("/profile-update", response_model=ProfileResponse, status_code=200)
@@ -91,5 +135,8 @@ async def update_profile(
     updated_profile["id"] = str(updated_profile.pop("_id"))
 
     index_profile(updated_profile)  # Re-index with new skills
+
+    # Construct full URLs before returning
+    updated_profile = construct_social_urls(updated_profile)
 
     return ProfileResponse(**updated_profile)
