@@ -16,3 +16,4 @@
 /app/utils/__pycache__
 /app/agents/team_formation/__pycache__
 /app/agents/team_formation/nodes/__pycache__
+/app/tasks/__pycache__

@@ -14,6 +14,9 @@ from sqlmodel import Session, select, or_
 from datetime import datetime
 from app.db.mongo import create_mongo_client
 from fastapi.middleware.cors import CORSMiddleware
+from app.routers.invitations import invitation_router
+from app.routers.teams import teams_router
+from app.tasks.background_tasks import delete_old_invitations
 import os
 
 load_dotenv()
@@ -54,12 +57,14 @@ async def lifespan(app: FastAPI):
 
     print("MONGODB CONNECTION ESTABLISHED")
     
-    # Start background cleanup task
+    # Start background cleanup tasks
     cleanup_task = asyncio.create_task(cleanup_used_otps())
+    invitation_cleanup_task = asyncio.create_task(delete_old_invitations(interval_seconds=86400, limit_days=7)) # Run daily, delete older than 7 days
 
     yield
     # Cancel on shutdown
     cleanup_task.cancel()
+    invitation_cleanup_task.cancel()
     mongo_client.close() # Close MongoDB connection
 
 app = FastAPI(lifespan=lifespan)
@@ -78,3 +83,5 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(project_router)
 app.include_router(agent_router)
+app.include_router(invitation_router)
+app.include_router(teams_router)

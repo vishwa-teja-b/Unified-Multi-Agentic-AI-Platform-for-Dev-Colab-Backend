@@ -40,21 +40,28 @@ async def create_profile(
 ):
     profiles_collection = get_profiles_collection(request)
 
-    # Check if profile already exists for this authenticated user
+    # Check if a partial profile already exists (auto-created during registration)
     existing_profile = await profiles_collection.find_one({"auth_user_id": auth_user_id})
-    if existing_profile:
-        raise HTTPException(status_code=400, detail="Profile already exists for this user")
     
     # Convert to dict and add auth_user_id from JWT
     profile_dict = profile.model_dump()
     profile_dict["auth_user_id"] = auth_user_id
-    profile_dict["created_at"] = datetime.utcnow()
-    profile_dict["updated_at"] = None
-    
-    result = await profiles_collection.insert_one(profile_dict)
+    profile_dict["updated_at"] = datetime.utcnow()
 
-    # Fetch the created profile
-    created_profile = await profiles_collection.find_one({"_id": result.inserted_id})
+    if existing_profile:
+        # Upsert: Update the partial profile with full profile data
+        profile_dict.pop("auth_user_id")  # Don't overwrite auth_user_id
+        await profiles_collection.update_one(
+            {"auth_user_id": auth_user_id},
+            {"$set": profile_dict}
+        )
+        # Fetch the updated profile
+        created_profile = await profiles_collection.find_one({"auth_user_id": auth_user_id})
+    else:
+        # Fresh insert (fallback for edge cases)
+        profile_dict["created_at"] = datetime.utcnow()
+        result = await profiles_collection.insert_one(profile_dict)
+        created_profile = await profiles_collection.find_one({"_id": result.inserted_id})
     
     # Convert MongoDB _id to string for response
     created_profile["id"] = str(created_profile.pop("_id"))

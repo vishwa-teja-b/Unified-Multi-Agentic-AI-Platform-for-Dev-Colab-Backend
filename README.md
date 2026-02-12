@@ -33,17 +33,34 @@
 - **Skill Indexing** — Profiles indexed in Pinecone for semantic search
 
 ### 📂 Projects (Phase 3)
-- **Create Project** — Define project with skills, features, team size
+- **Create Project** — Define project with skills, features, team size; atomically creates a team with owner as first member
 - **Get My Projects** — List all user's projects
+- **Get All Projects** — Browse projects from other users (Explore view)
 - **Get Project by ID** — Retrieve single project details
 - **Update Project** — Modify project fields
 - **Delete Project** — Remove project
 
-### 🤖 AI Team Formation Agent (Phase 4) ✨ NEW
+### 🤖 AI Team Formation Agent (Phase 4)
 - **Role Analysis** — LLM identifies required team roles from project requirements
 - **Skill Matching** — Semantic search finds candidates via Pinecone vectors
 - **Candidate Evaluation** — LLM scores candidates with reasoning
 - **LangGraph Workflow** — Multi-node agent orchestration with MongoDB checkpoints
+
+### 📨 Invitations & Join Requests (Phase 5) ✨ NEW
+- **Send Invitation** — Project owner invites recommended teammates
+- **Get My Invitations** — Retrieve all invitations received by the user
+- **Update Invitation** — Accept or reject an invitation
+- **Request to Join** — Non-owner users can request to join a project with a role and optional message
+- **Get Join Requests** — Project owner views all pending join requests
+- **Respond to Join Request** — Owner accepts or rejects; on accept, the requester is added to the team
+- **Background Cleanup** — Auto-deletes old invitations daily (older than 7 days)
+
+### 👥 Teams (Phase 5) ✨ NEW
+- **Auto-creation** — Team is created atomically when a project is created (owner as first member)
+- **team_id Reference** — Projects store a `team_id` reference; team data lives in the `teams` collection (single source of truth)
+- **Get Team by ID** — Retrieve team details by team document ID
+- **Get Team by Project ID** — Retrieve team details by associated project ID
+- **Member Management** — New members are added via join request acceptance
 
 ### 🏗️ Architecture
 - **Framework:** FastAPI with async/await support
@@ -77,12 +94,17 @@ backend/
 │   │
 │   ├── dto/
 │   │   ├── profile_schema.py   # Profile request/response DTOs
-│   │   └── project_schema.py   # Project request/response DTOs
+│   │   ├── project_schema.py   # Project request/response DTOs
+│   │   ├── invitation_schema.py # Invitation & JoinRequest DTOs
+│   │   ├── team_schema.py      # TeamResponse & TeamMemberResponse DTOs
+│   │   └── team_formation_schema.py # AI agent request DTOs
 │   │
 │   ├── models/
-│   │   ├── user.py             # User model (MySQL)
+│   │   ├── User.py             # User model (MySQL)
 │   │   ├── profiles.py         # Profile model (MongoDB)
 │   │   ├── projects.py         # Project model (MongoDB)
+│   │   ├── invitations.py      # Invitation model (MongoDB)
+│   │   ├── teams.py            # Team & TeamMember models (MongoDB)
 │   │   ├── password_reset_token.py  # OTP storage
 │   │   └── schemas.py          # Auth request/response schemas
 │   │
@@ -90,7 +112,12 @@ backend/
 │   │   ├── auth.py             # Authentication endpoints
 │   │   ├── profiles.py         # Profile CRUD endpoints
 │   │   ├── projects.py         # Project CRUD endpoints
-│   │   └── agents.py           # AI Agent endpoints
+│   │   ├── agents.py           # AI Agent endpoints
+│   │   ├── invitations.py      # Invitation & Join Request endpoints
+│   │   └── teams.py            # Team endpoints
+│   │
+│   ├── tasks/
+│   │   └── background_tasks.py # Scheduled cleanup tasks
 │   │
 │   ├── agents/
 │   │   ├── llm_config.py       # OpenRouter LLM configuration
@@ -140,35 +167,60 @@ backend/
 ### Projects (🔒 Protected)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/api/projects/create-project` | 🔒 | Create new project |
+| `POST` | `/api/projects/create-project` | 🔒 | Create project + team (atomic) |
 | `GET` | `/api/projects/my-projects` | 🔒 | List user's projects |
+| `GET` | `/api/projects/all-projects` | 🔒 | Browse other users' projects |
 | `GET` | `/api/projects/project/{id}` | 🔒 | Get single project |
 | `PATCH` | `/api/projects/project/{id}` | 🔒 | Update project |
 | `DELETE` | `/api/projects/project/{id}` | 🔒 | Delete project |
+
+### Invitations & Join Requests (🔒 Protected)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/projects/send-invitation` | 🔒 | Owner invites a teammate |
+| `GET` | `/api/projects/get-my-invitations` | 🔒 | Get invitations received |
+| `PATCH` | `/api/projects/update-invitation` | 🔒 | Accept/reject an invitation |
+| `POST` | `/api/projects/request-to-join` | 🔒 | Request to join a project |
+| `GET` | `/api/projects/get-join-requests` | 🔒 | Owner views pending requests |
+| `POST` | `/api/projects/respond-join-request` | 🔒 | Owner accepts/rejects request |
+
+### Teams (🔒 Protected)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/teams/team/{team_id}` | 🔒 | Get team by team ID |
+| `GET` | `/api/teams/project/{project_id}` | 🔒 | Get team by project ID |
 
 ### AI Agents (🔒 Protected)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | `POST` | `/api/agents/team-formation` | 🔒 | Find & evaluate team candidates |
 
-### Example: Register User
+### Example: Create Project (with atomic team creation)
 ```bash
-curl -X POST http://localhost:8000/api/auth/register \
+curl -X POST http://localhost:8000/api/projects/create-project \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
   -d '{
-    "email": "user@example.com",
-    "username": "johndoe",
-    "password": "securepass123"
+    "title": "AI Study Planner",
+    "category": "AI/ML",
+    "description": "An intelligent study planner using AI for personalized schedules.",
+    "features": ["Smart scheduling", "Progress tracking"],
+    "required_skills": ["Python", "React", "TensorFlow"],
+    "team_size": { "min": 2, "max": 4 },
+    "complexity": "Medium",
+    "estimated_duration": "2-3 months"
   }'
 ```
 
-### Example: Login
+### Example: Request to Join a Project
 ```bash
-curl -X POST http://localhost:8000/api/auth/login \
+curl -X POST http://localhost:8000/api/projects/request-to-join \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
   -d '{
-    "email": "user@example.com",
-    "password": "securepass123"
+    "project_id": "<project_id>",
+    "role": "Frontend Developer",
+    "message": "I have 2 years of React experience!"
   }'
 ```
 
@@ -238,11 +290,11 @@ uvicorn app.main:app --reload
 
 ## 🧹 Background Workers
 
-The application includes a background worker that automatically cleans up:
-- ✅ Used OTP tokens
-- ✅ Expired OTP tokens
+The application includes background workers that automatically clean up:
+- ✅ Used & expired OTP tokens — **every 15 minutes**
+- ✅ Old invitations (> 7 days) — **daily**
 
-**Runs every 15 minutes** using `asyncio.create_task()` in the FastAPI lifespan.
+Managed via `asyncio.create_task()` in the FastAPI lifespan.
 
 ---
 
@@ -302,8 +354,41 @@ The application includes a background worker that automatically cleans up:
   "complexity": "Medium",
   "estimated_duration": "2-3 months",
   "status": "Open",
-  "team_members": [],
+  "team_id": "683456abc...",
+  "created_at": "2026-02-03T13:50:33Z",
+  "updated_at": null
+}
+```
+
+### MongoDB: Teams Collection ✨ NEW
+```json
+{
+  "_id": "ObjectId",
+  "project_id": "682abc...",
+  "project_title": "Mental Health Mood Tracker",
+  "project_owner": 1,
+  "team_members": [
+    { "user_id": 1, "role": "Owner", "joined_at": "2026-02-03T13:50:33Z" },
+    { "user_id": 4, "role": "Frontend Developer", "joined_at": "2026-02-04T09:20:00Z" }
+  ],
   "created_at": "2026-02-03T13:50:33Z"
+}
+```
+
+### MongoDB: Invitations Collection ✨ NEW
+```json
+{
+  "_id": "ObjectId",
+  "project_id": "682abc...",
+  "project_title": "Mental Health Mood Tracker",
+  "sender_id": 1,
+  "receiver_id": 4,
+  "role": "Frontend Developer",
+  "message": "I'd love to contribute!",
+  "type": "JOIN_REQUEST",
+  "status": "PENDING",
+  "created_at": "2026-02-04T08:00:00Z",
+  "updated_at": null
 }
 ```
 
@@ -314,12 +399,12 @@ The application includes a background worker that automatically cleans up:
 - [x] Phase 1: Authentication system ✅
 - [x] Phase 2: User profiles + Pinecone skill indexing ✅
 - [x] Phase 3: Projects CRUD ✅
-- [x] Phase 4: AI Agent — Team Formation (LangGraph) ✅ NEW
-- [ ] Phase 5: Invitation System
+- [x] Phase 4: AI Agent — Team Formation (LangGraph) ✅
+- [x] Phase 5: Invitations, Join Requests & Teams ✅ NEW
 - [ ] Phase 6: AI Agent — Project Planner
 - [ ] Phase 7: Real-time collaboration (WebSocket)
 - [ ] Phase 8: Code editor integration
-- [ ] Phase 8: Whiteboard (tldraw)
+- [ ] Phase 9: Whiteboard (tldraw)
 
 ---
 

@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from datetime import datetime
 from bson import ObjectId
 from app.dto.project_schema import ProjectCreateRequest, ProjectResponse, ProjectUpdateRequest
-from app.dependencies.collections import get_projects_collection
+from app.models.teams import Team, TeamMember
+from app.dependencies.collections import get_projects_collection, get_teams_collection
 from app.dependencies.auth import get_current_user_id
 
 project_router = APIRouter(prefix="/api/projects", tags=["Projects"])
@@ -14,21 +15,48 @@ async def create_project(
     auth_user_id: int = Depends(get_current_user_id)
 ):
     projects_collection = get_projects_collection(request)
-
-    # Check if project already exists for this authenticated user
-    existing_project = await projects_collection.find_one({"auth_user_id": auth_user_id})
-    if existing_project:
-        raise HTTPException(status_code=400, detail="Project already exists for this user")
+    teams_collection = get_teams_collection(request)
     
     # Convert to dict and add auth_user_id from JWT
     project_dict = project.model_dump()
     project_dict["auth_user_id"] = auth_user_id
     project_dict["status"] = "Open"  # Default status for new projects
-    project_dict["team_members"] = []  # Empty team initially
+    project_dict["team_id"] = None  # Will be set after team creation
     project_dict["created_at"] = datetime.utcnow()
     project_dict["updated_at"] = None
     
+    # Step 1: Insert project
     result = await projects_collection.insert_one(project_dict)
+    project_id = str(result.inserted_id)
+
+    # Step 2: Create team with owner as first member
+    try:
+        owner_member = TeamMember(
+            user_id=auth_user_id,
+            role="Owner",
+            joined_at=datetime.utcnow()
+        )
+
+        team = Team(
+            project_id=project_id,
+            project_title=project_dict["title"],
+            project_owner=auth_user_id,
+            team_members=[owner_member],
+            created_at=datetime.utcnow()
+        )
+        team_result = await teams_collection.insert_one(team.model_dump())
+        team_id = str(team_result.inserted_id)
+
+        # Step 3: Update project with team_id reference
+        await projects_collection.update_one(
+            {"_id": result.inserted_id},
+            {"$set": {"team_id": team_id}}
+        )
+
+    except Exception as e:
+        # Rollback: delete the project if team creation fails
+        await projects_collection.delete_one({"_id": result.inserted_id})
+        raise HTTPException(status_code=500, detail=f"Failed to create team for project. Rolled back. Error: {str(e)}")
 
     # Fetch the created project
     created_project = await projects_collection.find_one({"_id": result.inserted_id})
@@ -36,11 +64,7 @@ async def create_project(
     # Convert MongoDB _id to string for response
     created_project["id"] = str(created_project.pop("_id"))
 
-    # Index the project in Pinecone
-    # index_project(created_project)
-
     return ProjectResponse(**created_project)
-
 
 
 @project_router.get("/my-projects", response_model=list[ProjectResponse], status_code=200)
@@ -117,3 +141,16 @@ async def delete_project(request: Request, project_id: str, auth_user_id: int = 
         raise HTTPException(status_code=403, detail="You do not have permission to delete this project")
     await projects_collection.delete_one({"_id": ObjectId(project_id)})
     return {"message": "Project deleted successfully"}
+
+@project_router.get("/all-projects", response_model=list[ProjectResponse], status_code=200)
+async def get_all_projects(request : Request, auth_user_id: int=Depends(get_current_user_id)):
+    projects_collection = get_projects_collection(request)
+
+    # Find all projects where auth_user_id is NOT the current user
+    projects = await projects_collection.find({"auth_user_id": {"$ne": auth_user_id}}).to_list(length=None)
+
+    # Convert _id to id for response
+    for project in projects:
+        project["id"] = str(project.pop("_id"))
+
+    return [ProjectResponse(**project) for project in projects]

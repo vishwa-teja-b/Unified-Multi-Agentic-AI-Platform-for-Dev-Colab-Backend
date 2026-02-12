@@ -30,7 +30,7 @@ class Project(BaseModel):
 
     status : str = Field(..., description="Open", "In Progress", "Completed")
 
-    team_members : list[dict] = Field(default_factory=list)
+    team_id : Optional[str] = None  # Reference to teams collection
 
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)

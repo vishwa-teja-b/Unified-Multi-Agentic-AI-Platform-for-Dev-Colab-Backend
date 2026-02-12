@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlmodel import Session, select
 from datetime import datetime
 from app.models.schemas import UserRegisterRequest, UserLoginRequest, RefreshTokenRequest, ForgotPasswordRequest, ResetPasswordRequest
@@ -14,7 +14,7 @@ from app.db.mysql_connection import get_session
 auth_router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @auth_router.post("/register", response_model=MessageResponse)
-def register(data : UserRegisterRequest, session : Session = Depends(get_session)):
+async def register(request: Request, data : UserRegisterRequest, session : Session = Depends(get_session)):
     existing = session.exec(select(User).where(User.email == data.email)).first()
 
     if existing:
@@ -31,6 +31,50 @@ def register(data : UserRegisterRequest, session : Session = Depends(get_session
 
     session.add(user)
     session.commit()
+    session.refresh(user)  # Get the auto-generated user.id
+
+    # --- Auto-create partial MongoDB profile (Manual Saga) ---
+    try:
+        profiles_collection = request.app.state.db["profiles"]
+        partial_profile = {
+            "auth_user_id": user.id,
+            "email": data.email,
+            "username": data.username,
+            "name": "",
+            "bio": "",
+            "phone": None,
+            "profile_picture": None,
+            "city": None,
+            "state": None,
+            "zip_code": None,
+            "country": None,
+            "timezone": "",
+            "primary_skills": [],
+            "secondary_skills": [],
+            "experience_level": None,
+            "experience": [],
+            "projects": [],
+            "interests": [],
+            "languages": [],
+            "availability_hours": None,
+            "open_to": [],
+            "preferred_role": None,
+            "github": None,
+            "linkedin": None,
+            "portfolio": None,
+            "created_at": datetime.utcnow(),
+            "updated_at": None
+        }
+        await profiles_collection.insert_one(partial_profile)
+    except Exception as e:
+        # Compensating transaction: rollback MySQL user if MongoDB fails
+        session.delete(user)
+        session.commit()
+        print(f"[Saga Rollback] MongoDB profile creation failed, rolled back MySQL user: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Registration failed. Please try again."
+        )
 
     return MessageResponse(
         message="User registered successfully",

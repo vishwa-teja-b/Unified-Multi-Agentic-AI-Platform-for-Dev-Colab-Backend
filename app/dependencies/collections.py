@@ -15,3 +15,9 @@ def get_profiles_collection(request: Request):
 
 def get_projects_collection(request: Request):
     return request.app.state.db["projects"]
+
+def get_invitations_collection(request: Request):
+    return request.app.state.db["invitations"]
+
+def get_teams_collection(request: Request):
+    return request.app.state.db["teams"]

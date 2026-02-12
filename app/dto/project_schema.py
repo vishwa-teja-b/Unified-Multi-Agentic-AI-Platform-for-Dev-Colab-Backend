@@ -52,7 +52,7 @@ class ProjectResponse(BaseModel):
     
     # Team
     team_size: TeamSize
-    team_members: list[dict] = Field(default_factory=list)
+    team_id: Optional[str] = None  # Reference to teams collection
     
     # Project Info
     complexity: str
