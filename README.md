@@ -62,6 +62,13 @@
 - **Get Team by Project ID** — Retrieve team details by associated project ID
 - **Member Management** — New members are added via join request acceptance
 
+### 🗓️ AI Project Planner Agent (Phase 6) ✨ NEW
+- **Feature Extraction** — LLM analyzes project description to identify key features
+- **Milestone Definition** — Breaks down features into logical sprints/milestones
+- **Task Generation** — Creates detailed actionable tasks for each sprint
+- **Async Execution** — LangGraph workflow runs asynchronously to prevent timeouts
+- **Structured Output** — Returns JSON-compliant roadmaps using `LLMParser`
+
 ### 🏗️ Architecture
 - **Framework:** FastAPI with async/await support
 - **Auth Database:** MySQL (Aiven Cloud) with SQLModel ORM
@@ -97,7 +104,8 @@ backend/
 │   │   ├── project_schema.py   # Project request/response DTOs
 │   │   ├── invitation_schema.py # Invitation & JoinRequest DTOs
 │   │   ├── team_schema.py      # TeamResponse & TeamMemberResponse DTOs
-│   │   └── team_formation_schema.py # AI agent request DTOs
+│   │   ├── team_formation_schema.py # AI agent request DTOs
+│   │   └── project_planner_schema.py # Planner request/response DTOs
 │   │
 │   ├── models/
 │   │   ├── User.py             # User model (MySQL)
@@ -122,6 +130,7 @@ backend/
 │   ├── agents/
 │   │   ├── llm_config.py       # OpenRouter LLM configuration
 │   │   ├── utils.py            # JSON extraction utilities
+│   │   ├── llm_parser.py       # Safe LLM response parsing
 │   │   └── team_formation/
 │   │       ├── state.py        # LangGraph state definition
 │   │       ├── team_formation_graph.py  # Graph builder
@@ -129,6 +138,11 @@ backend/
 │   │           ├── role_analyzer.py     # LLM role analysis
 │   │           ├── skill_matcher.py     # Pinecone search
 │   │           └── llm_evaluator.py     # Candidate scoring
+│   │
+│   │       └── project_planner/
+│   │           ├── nodes/               # Planner logic nodes
+│   │           ├── graph.py             # Planner graph definition
+│   │           └── state.py             # Planner state schema
 │   │
 │   ├── services/
 │   │   └── mail_service.py     # Email sending & OTP generation
@@ -194,6 +208,7 @@ backend/
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | `POST` | `/api/agents/team-formation` | 🔒 | Find & evaluate team candidates |
+| `POST` | `/api/agents/project-planner` | 🔒 | Generate project roadmap & tasks |
 
 ### Example: Create Project (with atomic team creation)
 ```bash
@@ -221,6 +236,16 @@ curl -X POST http://localhost:8000/api/projects/request-to-join \
     "project_id": "<project_id>",
     "role": "Frontend Developer",
     "message": "I have 2 years of React experience!"
+  }'
+```
+
+### Example: Generate Roadmap
+```bash
+curl -X POST http://localhost:8000/api/agents/project-planner \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "project_id": "<project_id>"
   }'
 ```
 
@@ -400,8 +425,8 @@ Managed via `asyncio.create_task()` in the FastAPI lifespan.
 - [x] Phase 2: User profiles + Pinecone skill indexing ✅
 - [x] Phase 3: Projects CRUD ✅
 - [x] Phase 4: AI Agent — Team Formation (LangGraph) ✅
-- [x] Phase 5: Invitations, Join Requests & Teams ✅ NEW
-- [ ] Phase 6: AI Agent — Project Planner
+- [x] Phase 5: Invitations, Join Requests & Teams ✅
+- [x] Phase 6: AI Agent — Project Planner ✅ NEW
 - [ ] Phase 7: Real-time collaboration (WebSocket)
 - [ ] Phase 8: Code editor integration
 - [ ] Phase 9: Whiteboard (tldraw)
