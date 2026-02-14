@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from app.agents.team_formation.team_formation_graph import initiate_team_formation_agent_graph, invoke_team_formation_agent
 from app.dto.team_formation_schema import TeamFormationRequest, TeamFormationResponse
 from app.dependencies.auth import get_current_user_id
-from app.dependencies.collections import get_projects_collection , get_profiles_collection
+from app.dependencies.collections import get_projects_collection , get_profiles_collection, get_teams_collection
 from bson import ObjectId
+from app.agents.project_planner.graph import initiate_project_planner_agent_graph, invoke_project_planner_agent
+from app.dto.project_planner_schema import ProjectPlannerRequest, ProjectPlannerResponse
+from pydantic import BaseModel
 
 agent_router = APIRouter(prefix="/api/agents", tags=["Team Formation Agent"])
 
@@ -58,3 +61,84 @@ async def team_formation_agent(
         recommendations=final_state.get("recommendations", []),
         error=final_state.get("error")
     )
+
+
+@agent_router.post("/project-planner", response_model=ProjectPlannerResponse, status_code=200)
+async def project_planner_agent(
+    request: Request,
+    request_body: ProjectPlannerRequest,
+    auth_user_id: int = Depends(get_current_user_id)
+):
+    print(f"--- Project Planner Agent Request Received for Project ID: {request_body.project_id} ---")
+    
+    projects_collection = get_projects_collection(request)
+    teams_collection = get_teams_collection(request)
+    
+    # Fetch Project
+    try:
+        project = await projects_collection.find_one({"_id": ObjectId(request_body.project_id)})
+        print(f"Project found: {project.get('title', 'Unknown')}")
+    except:
+        print(f"Invalid Project ID format: {request_body.project_id}")
+        raise HTTPException(status_code=400, detail="Invalid Project ID format")
+        
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Fetch Team (if exists)
+    team_members = []
+    if project.get("team_id"):
+        try:
+            team = await teams_collection.find_one({"_id": ObjectId(project["team_id"])})
+            if team:
+                team_members = team.get("team_members", [])
+                print(f"Team found: {len(team_members)} members")
+        except:
+            print("Invalid team ID format or team not found")
+    else:
+        print("No team assigned to this project yet.")
+            
+    # Prepare State
+    initial_state = {
+        "project_id": str(project["_id"]),
+        "title": project.get("title", ""),
+        "category": project.get("category", ""),
+        "description": project.get("description", ""),
+        "features": project.get("features", []),
+        "required_skills": project.get("required_skills", []),
+        "team_size": project.get("team_size", {}), # Pass raw dict
+        "team_members": team_members, # Raw list from DB
+        "team_id": project.get("team_id"),
+        "complexity": project.get("complexity", ""),
+        "estimated_duration": project.get("estimated_duration", ""),
+        "status": project.get("status", "Open"),
+        "extracted_features": [],
+        "milestones": [],
+        "roadmap": [],
+        "error": None
+    }
+    
+    # Run Agent
+    try:
+        print("Initiating Project Planner Agent Graph...")
+        # Using new async structure:
+        graph = await initiate_project_planner_agent_graph()
+        
+        print("Invoking Project Planner Agent...")
+        result = await invoke_project_planner_agent(graph, initial_state, thread_id=str(project["_id"]))
+        
+        print("Project Planner Agent Execution Successful")
+        
+        # Save Plan to DB (optional, but good practice)
+        # For now, just return it
+        
+        return ProjectPlannerResponse(
+            project_id=result["project_id"],
+            roadmap=result["roadmap"],
+            extracted_features=result["extracted_features"],
+            error=result.get("error")
+        )
+        
+    except Exception as e:
+        print(f"Agent Execution Failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

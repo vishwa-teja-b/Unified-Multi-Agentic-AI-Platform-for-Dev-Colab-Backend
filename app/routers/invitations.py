@@ -1,8 +1,11 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
 from datetime import datetime
+from sqlmodel import Session, select
 from app.dto.invitation_schema import SendInvitation, UpdateInvitation, JoinRequest
 from app.models.teams import TeamMember
+from app.models.User import User
 from app.dependencies.collections import get_profiles_collection , get_invitations_collection, get_projects_collection, get_teams_collection
+from app.db.mysql_connection import get_session
 from bson import ObjectId
 from app.dependencies.auth import get_current_user_id
 
@@ -12,6 +15,7 @@ invitation_router = APIRouter(prefix="/api/projects", tags=["Projects"])
 async def send_invitation(request : Request,
                             request_body : SendInvitation,
                             auth_user_id : int = Depends(get_current_user_id),
+                            session : Session = Depends(get_session),
                         ):
     
     profiles_collection = get_profiles_collection(request)
@@ -23,12 +27,25 @@ async def send_invitation(request : Request,
     if not existing_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
+    # Resolve receiver_id from receiver_username if not provided
+    receiver_id = request_body.receiver_id
+    if not receiver_id and request_body.receiver_username:
+        user = session.exec(
+            select(User).where(User.username == request_body.receiver_username)
+        ).first()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"User '{request_body.receiver_username}' not found")
+        receiver_id = user.id
+    
+    if not receiver_id:
+        raise HTTPException(status_code=400, detail="Either receiver_id or receiver_username is required")
+
     existing_project = await projects_collection.find_one({"_id" : ObjectId(request_body.project_id)})
 
     if not existing_project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    existing_invitation = await invitations_collection.find_one({"project_id" : request_body.project_id, "receiver_id" : request_body.receiver_id})
+    existing_invitation = await invitations_collection.find_one({"project_id" : request_body.project_id, "receiver_id" : receiver_id})
 
     if existing_invitation:
         raise HTTPException(status_code=400, detail="Invitation already sent")
@@ -39,9 +56,11 @@ async def send_invitation(request : Request,
 
     # Fix: Use the request body data, but override/add server-side fields
     invitation_data = request_body.model_dump()
+    invitation_data.pop("receiver_username", None)  # Don't store in MongoDB
 
     invitation_data.update({
         "sender_id": auth_user_id, # Ensure sender is the authenticated user
+        "receiver_id": receiver_id,
         "status": "PENDING",
         "created_at": datetime.utcnow(),
         "updated_at": None
@@ -60,6 +79,7 @@ async def update_invitation(request : Request,
                         ):
     
     invitations_collection = get_invitations_collection(request)
+    teams_collection = get_teams_collection(request)
 
     invitation = await invitations_collection.find_one({"_id" : ObjectId(request_body.invitation_id)})
 
@@ -69,7 +89,14 @@ async def update_invitation(request : Request,
     if invitation["receiver_id"] != auth_user_id:
         raise HTTPException(status_code=403, detail="You are not authorized to update this invitation")
 
+    if invitation["status"] != "PENDING":
+        raise HTTPException(status_code=400, detail="This invitation has already been responded to")
+
     new_status = request_body.status.upper()
+
+    if new_status not in ("ACCEPTED", "REJECTED"):
+        raise HTTPException(status_code=400, detail="Status must be ACCEPTED or REJECTED")
+
     updated_at = datetime.utcnow()
 
     result = await invitations_collection.update_one(
@@ -80,7 +107,30 @@ async def update_invitation(request : Request,
     if result.modified_count == 0:
         raise HTTPException(status_code=400, detail="Invitation status not updated or already same")
 
-    return {"message" : "Invitation updated successfully"}
+    # On ACCEPT: add the invitee to the project team
+    if new_status == "ACCEPTED":
+        project_id = invitation["project_id"]
+        role = invitation.get("role", "Member")
+
+        new_member = TeamMember(
+            user_id=auth_user_id,
+            role=role,
+            joined_at=datetime.utcnow()
+        )
+
+        existing_team = await teams_collection.find_one({"project_id": project_id})
+
+        if existing_team:
+            already_member = any(m["user_id"] == auth_user_id for m in existing_team.get("team_members", []))
+            if not already_member:
+                await teams_collection.update_one(
+                    {"project_id": project_id},
+                    {"$push": {"team_members": new_member.model_dump()}}
+                )
+
+        return {"message": "Invitation accepted. You have been added to the team."}
+
+    return {"message" : "Invitation rejected."}
 
 @invitation_router.get("/get-my-invitations", status_code=200)
 async def get_my_invitations(request : Request, auth_user_id : int = Depends(get_current_user_id)):

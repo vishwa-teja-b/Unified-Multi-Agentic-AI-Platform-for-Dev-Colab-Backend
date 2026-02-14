@@ -6,6 +6,7 @@ from datetime import datetime
 class TeamMemberResponse(BaseModel):
     """Response DTO for an individual team member."""
     user_id: int
+    username: Optional[str] = None
     role: str
     joined_at: datetime
 

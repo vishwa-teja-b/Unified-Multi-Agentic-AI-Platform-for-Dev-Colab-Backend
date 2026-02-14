@@ -14,3 +14,14 @@ def get_chat_llm():
     )
 
     return chat_llm
+
+def get_chat_llm_2():
+
+    chat_llm = ChatOpenAI(
+        model=os.getenv("MODEL_1"),
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPEN_ROUTER_API_KEY_2"),
+        temperature=0.5,
+    )
+
+    return chat_llm

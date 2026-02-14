@@ -102,6 +102,7 @@ async def get_profile_by_username(
         raise HTTPException(status_code=404, detail="User not found... Login First")
 
     other_profile = await profiles_collection.find_one({"username": username})
+    
     if not other_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     other_profile["id"] = str(other_profile.pop("_id"))

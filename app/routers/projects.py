@@ -5,6 +5,7 @@ from app.dto.project_schema import ProjectCreateRequest, ProjectResponse, Projec
 from app.models.teams import Team, TeamMember
 from app.dependencies.collections import get_projects_collection, get_teams_collection
 from app.dependencies.auth import get_current_user_id
+from app.vector_stores.pinecone_db import index_project
 
 project_router = APIRouter(prefix="/api/projects", tags=["Projects"])
 
@@ -64,17 +65,55 @@ async def create_project(
     # Convert MongoDB _id to string for response
     created_project["id"] = str(created_project.pop("_id"))
 
+    # Index project in Pinecone for AI agents
+    try:
+        # Create a copy with _id restored for indexing (or just pass the str id)
+        # index_project expects a dict, and we stripped _id but added id.
+        # Let's pass the full dict with 'id'
+        # The index_project function uses .get('_id') for project_id metadata, so we might want to pass it back or ensure consistency.
+        # Actually my implementation of index_project uses .get('_id').
+        # Let's adjust the dict we pass to be safe.
+        project_to_index = created_project.copy()
+        project_to_index['_id'] = project_to_index['id'] # map id back to _id just in case
+        
+        # Consider running this in background?
+        # For now, synchronous to ensure it's indexed.
+        index_project(project_to_index)
+        
+    except Exception as e:
+        print(f"Warning: Failed to index project {project_id}: {e}")
+        # We don't fail the request if indexing fails, just log it.
+
     return ProjectResponse(**created_project)
 
 
 @project_router.get("/my-projects", response_model=list[ProjectResponse], status_code=200)
 async def get_projects(request: Request, auth_user_id: int = Depends(get_current_user_id)):
     projects_collection = get_projects_collection(request)
-    projects = await projects_collection.find({"auth_user_id": auth_user_id}).to_list(length=None)
+    teams_collection = get_teams_collection(request)
+
+    # 1. Find teams where the user is a member
+    teams = await teams_collection.find({"team_members.user_id": auth_user_id}).to_list(length=None)
+    
+    # Extract project IDs from teams (stored as strings in Team model)
+    joined_project_ids = [ObjectId(team["project_id"]) for team in teams]
+    
+    # 2. Find projects where user is owner OR a team member
+    query = {
+        "$or": [
+            {"auth_user_id": auth_user_id},
+            {"_id": {"$in": joined_project_ids}}
+        ]
+    }
+
+    projects = await projects_collection.find(query).to_list(length=None)
+    
     if not projects:
-        raise HTTPException(status_code=404, detail="Projects not found")
+        return []
+
     for project in projects:
         project["id"] = str(project.pop("_id"))
+        
     return [ProjectResponse(**project) for project in projects]
 
 
@@ -87,7 +126,6 @@ async def get_project_by_id(request: Request, project_id: str, auth_user_id: int
         raise HTTPException(status_code=404, detail="Project not found")
     project["id"] = str(project.pop("_id"))
     return ProjectResponse(**project)
-
 
 
 @project_router.patch("/project/{project_id}", response_model = ProjectResponse, status_code=200)
@@ -113,6 +151,7 @@ async def update_project(
     update_dict["updated_at"] = datetime.utcnow()
     
     # Update the project
+    
     await projects_collection.update_one(
         {"_id": ObjectId(project_id)}, 
         {"$set": update_dict}
@@ -122,10 +161,16 @@ async def update_project(
     updated_project = await projects_collection.find_one({"_id": ObjectId(project_id)})
     
     # Convert MongoDB _id to string for response
+    # Convert MongoDB _id to string for response
     updated_project["id"] = str(updated_project.pop("_id"))
     
-    # Re-index with new skills/data if needed
-    # index_project(updated_project)
+    # Re-index with new skills/data
+    try:
+        project_to_index = updated_project.copy()
+        project_to_index['_id'] = project_to_index['id']
+        index_project(project_to_index)
+    except Exception as e:
+        print(f"Warning: Failed to re-index project {project_id}: {e}")
     
     return ProjectResponse(**updated_project)
 

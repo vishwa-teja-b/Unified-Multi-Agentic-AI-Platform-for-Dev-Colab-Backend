@@ -8,7 +8,8 @@ class SendInvitation(BaseModel):
     """
     project_id : str = Field(foreign_key="projects.id", index=True, ondelete="CASCADE")
     sender_id : int
-    receiver_id : int
+    receiver_id : Optional[int] = None
+    receiver_username : Optional[str] = None
     project_title : str
     role : str
     status : str = "PENDING"# PENDING / ACCEPTED / REJECTED

@@ -1,5 +1,6 @@
 /virtual_env
 .env
+
 /app/db/py.py
 /app/__pycache__
 /app/agents/__pycache__
@@ -17,3 +18,5 @@
 /app/agents/team_formation/__pycache__
 /app/agents/team_formation/nodes/__pycache__
 /app/tasks/__pycache__
+/app/agents/project_planner/__pycache__
+/app/agents/project_planner/nodes/__pycache__
