@@ -4,6 +4,11 @@ from typing import List, Optional, Any
 class ProjectPlannerRequest(BaseModel):
     project_id: str
 
+class UpdateTaskStatusRequest(BaseModel):
+    project_id: str
+    task_id: str
+    status: str
+
 class ProjectPlannerResponse(BaseModel):
     project_id: str
     roadmap: List[Any]

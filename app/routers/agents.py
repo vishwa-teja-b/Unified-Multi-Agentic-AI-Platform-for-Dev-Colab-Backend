@@ -2,11 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from app.agents.team_formation.team_formation_graph import initiate_team_formation_agent_graph, invoke_team_formation_agent
 from app.dto.team_formation_schema import TeamFormationRequest, TeamFormationResponse
 from app.dependencies.auth import get_current_user_id
-from app.dependencies.collections import get_projects_collection , get_profiles_collection, get_teams_collection
+from app.dependencies.collections import get_projects_collection, get_teams_collection, get_project_plans_collection, get_profiles_collection
 from bson import ObjectId
 from app.agents.project_planner.graph import initiate_project_planner_agent_graph, invoke_project_planner_agent
 from app.dto.project_planner_schema import ProjectPlannerRequest, ProjectPlannerResponse
-from pydantic import BaseModel
+from app.agents.team_formation.state import TeamFormationState
+from app.dto.team_schema import TeamResponse
+from app.models.project_plan import ProjectPlan
+from datetime import datetime
 
 agent_router = APIRouter(prefix="/api/agents", tags=["Team Formation Agent"])
 
@@ -73,6 +76,7 @@ async def project_planner_agent(
     
     projects_collection = get_projects_collection(request)
     teams_collection = get_teams_collection(request)
+    project_plans_collection = get_project_plans_collection(request)
     
     # Fetch Project
     try:
@@ -129,8 +133,26 @@ async def project_planner_agent(
         
         print("Project Planner Agent Execution Successful")
         
-        # Save Plan to DB (optional, but good practice)
-        # For now, just return it
+        # Save Plan to DB
+        try:
+            plan_data = ProjectPlan(
+                project_id=result["project_id"],
+                roadmap=result["roadmap"],
+                extracted_features=result["extracted_features"],
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            # Upsert: Update if exists, Insert if not
+            await project_plans_collection.update_one(
+                {"project_id": result["project_id"]},
+                {"$set": plan_data.model_dump()},
+                upsert=True
+            )
+            print(f"✅ Project Plan saved to DB for project: {result['project_id']}")
+        except Exception as db_err:
+            print(f"❌ Failed to save project plan to DB: {db_err}")
+            # We don't raise error here to let the response go through, but log it
         
         return ProjectPlannerResponse(
             project_id=result["project_id"],

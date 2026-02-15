@@ -5,7 +5,7 @@ from app.dto.project_schema import ProjectCreateRequest, ProjectResponse, Projec
 from app.models.teams import Team, TeamMember
 from app.dependencies.collections import get_projects_collection, get_teams_collection
 from app.dependencies.auth import get_current_user_id
-from app.vector_stores.pinecone_db import index_project
+
 
 project_router = APIRouter(prefix="/api/projects", tags=["Projects"])
 
@@ -65,24 +65,7 @@ async def create_project(
     # Convert MongoDB _id to string for response
     created_project["id"] = str(created_project.pop("_id"))
 
-    # Index project in Pinecone for AI agents
-    try:
-        # Create a copy with _id restored for indexing (or just pass the str id)
-        # index_project expects a dict, and we stripped _id but added id.
-        # Let's pass the full dict with 'id'
-        # The index_project function uses .get('_id') for project_id metadata, so we might want to pass it back or ensure consistency.
-        # Actually my implementation of index_project uses .get('_id').
-        # Let's adjust the dict we pass to be safe.
-        project_to_index = created_project.copy()
-        project_to_index['_id'] = project_to_index['id'] # map id back to _id just in case
-        
-        # Consider running this in background?
-        # For now, synchronous to ensure it's indexed.
-        index_project(project_to_index)
-        
-    except Exception as e:
-        print(f"Warning: Failed to index project {project_id}: {e}")
-        # We don't fail the request if indexing fails, just log it.
+
 
     return ProjectResponse(**created_project)
 
@@ -164,13 +147,7 @@ async def update_project(
     # Convert MongoDB _id to string for response
     updated_project["id"] = str(updated_project.pop("_id"))
     
-    # Re-index with new skills/data
-    try:
-        project_to_index = updated_project.copy()
-        project_to_index['_id'] = project_to_index['id']
-        index_project(project_to_index)
-    except Exception as e:
-        print(f"Warning: Failed to re-index project {project_id}: {e}")
+
     
     return ProjectResponse(**updated_project)
 

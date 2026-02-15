@@ -16,6 +16,7 @@ from app.db.mongo import create_mongo_client
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers.invitations import invitation_router
 from app.routers.teams import teams_router
+from app.routers.planned_projects import planned_projects_router
 from app.tasks.background_tasks import delete_old_invitations
 import os
 
@@ -85,3 +86,4 @@ app.include_router(project_router)
 app.include_router(agent_router)
 app.include_router(invitation_router)
 app.include_router(teams_router)
+app.include_router(planned_projects_router)
