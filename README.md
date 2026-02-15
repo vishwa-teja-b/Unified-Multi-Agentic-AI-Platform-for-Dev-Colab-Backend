@@ -114,6 +114,7 @@ backend/
 │   │   ├── invitations.py      # Invitation model (MongoDB)
 │   │   ├── teams.py            # Team & TeamMember models (MongoDB)
 │   │   ├── password_reset_token.py  # OTP storage
+│   │   ├── project_plan.py     # Project Plan model (MongoDB)
 │   │   └── schemas.py          # Auth request/response schemas
 │   │
 │   ├── routers/
@@ -122,6 +123,7 @@ backend/
 │   │   ├── projects.py         # Project CRUD endpoints
 │   │   ├── agents.py           # AI Agent endpoints
 │   │   ├── invitations.py      # Invitation & Join Request endpoints
+│   │   ├── planned_projects.py # Planned Project endpoints
 │   │   └── teams.py            # Team endpoints
 │   │
 │   ├── tasks/
@@ -209,6 +211,12 @@ backend/
 |--------|----------|------|-------------|
 | `POST` | `/api/agents/team-formation` | 🔒 | Find & evaluate team candidates |
 | `POST` | `/api/agents/project-planner` | 🔒 | Generate project roadmap & tasks |
+
+### Planned Projects (🔒 Protected)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/planned-projects/project/{project_id}` | 🔒 | Get generated roadmap |
+| `PATCH` | `/api/planned-projects/tasks` | 🔒 | Update task status |
 
 ### Example: Create Project (with atomic team creation)
 ```bash
@@ -414,6 +422,27 @@ Managed via `asyncio.create_task()` in the FastAPI lifespan.
   "status": "PENDING",
   "created_at": "2026-02-04T08:00:00Z",
   "updated_at": null
+}
+```
+
+---
+
+### MongoDB: Project Plans Collection ✨ NEW
+```json
+{
+  "_id": "ObjectId",
+  "project_id": "682abc...",
+  "roadmap": [
+    {
+      "sprint": "Sprint 1",
+      "tasks": [
+        { "id": "T1", "title": "Setup Repo", "status": "To Do" }
+      ]
+    }
+  ],
+  "extracted_features": ["Login", "Dashboard"],
+  "created_at": "2026-02-05T10:00:00Z",
+  "updated_at": "2026-02-05T12:00:00Z"
 }
 ```
 
