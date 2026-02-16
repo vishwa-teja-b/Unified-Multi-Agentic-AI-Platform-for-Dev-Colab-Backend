@@ -17,8 +17,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.invitations import invitation_router
 from app.routers.teams import teams_router
 from app.routers.planned_projects import planned_projects_router
+from app.routers.rooms import rooms_router
+from app.routers.execution import router as execution_router
 from app.tasks.background_tasks import delete_old_invitations
 import os
+import socketio
+from app.sockets.handlers import register_socket_handlers
 
 load_dotenv()
 
@@ -68,11 +72,10 @@ async def lifespan(app: FastAPI):
     invitation_cleanup_task.cancel()
     mongo_client.close() # Close MongoDB connection
 
-app = FastAPI(lifespan=lifespan)
+# Rename to fastapi_app to distinguish from the SocketIO app wrapper
+fastapi_app = FastAPI(lifespan=lifespan)
 
-
-
-app.add_middleware(
+fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # For development; restrict in production
     allow_credentials=True,
@@ -80,10 +83,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router)
-app.include_router(profile_router)
-app.include_router(project_router)
-app.include_router(agent_router)
-app.include_router(invitation_router)
-app.include_router(teams_router)
-app.include_router(planned_projects_router)
+fastapi_app.include_router(auth_router)
+fastapi_app.include_router(profile_router)
+fastapi_app.include_router(project_router)
+fastapi_app.include_router(agent_router)
+fastapi_app.include_router(invitation_router)
+fastapi_app.include_router(teams_router)
+fastapi_app.include_router(planned_projects_router)
+fastapi_app.include_router(rooms_router)
+fastapi_app.include_router(execution_router)
+
+# --- SOCKET.IO SETUP ---
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins='*' # Allow all origins for now
+)
+
+# Register Event Handlers
+register_socket_handlers(sio)
+
+# Wrap FastAPI with SocketIO
+app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)

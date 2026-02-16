@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: piston_api
+    restart: always
+    privileged: true
+    ports:
+      - "2000:2000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - piston_data:/piston
+    # Piston configuration (reflected from its documentation)
+    environment:
+      - PISTON_LOG_LEVEL=INFO
+      - PISTON_PORT=2000
+
+volumes:
+  piston_data:

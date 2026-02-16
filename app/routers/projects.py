@@ -5,6 +5,7 @@ from app.dto.project_schema import ProjectCreateRequest, ProjectResponse, Projec
 from app.models.teams import Team, TeamMember
 from app.dependencies.collections import get_projects_collection, get_teams_collection
 from app.dependencies.auth import get_current_user_id
+from app.vector_stores.pinecone_db import index_project, delete_project_index, search_projects as pinecone_search_projects
 
 
 project_router = APIRouter(prefix="/api/projects", tags=["Projects"])
@@ -65,7 +66,11 @@ async def create_project(
     # Convert MongoDB _id to string for response
     created_project["id"] = str(created_project.pop("_id"))
 
-
+    # Index in Pinecone for semantic search
+    try:
+        index_project(created_project)
+    except Exception as e:
+        print(f"Warning: Failed to index project in Pinecone: {e}")
 
     return ProjectResponse(**created_project)
 
@@ -146,9 +151,13 @@ async def update_project(
     # Convert MongoDB _id to string for response
     # Convert MongoDB _id to string for response
     updated_project["id"] = str(updated_project.pop("_id"))
-    
 
-    
+    # Re-index in Pinecone with updated data
+    try:
+        index_project(updated_project)
+    except Exception as e:
+        print(f"Warning: Failed to re-index project in Pinecone: {e}")
+
     return ProjectResponse(**updated_project)
 
 
@@ -162,7 +171,59 @@ async def delete_project(request: Request, project_id: str, auth_user_id: int = 
     if project["auth_user_id"] != auth_user_id:
         raise HTTPException(status_code=403, detail="You do not have permission to delete this project")
     await projects_collection.delete_one({"_id": ObjectId(project_id)})
+
+    # Remove from Pinecone index
+    try:
+        delete_project_index(project_id)
+    except Exception as e:
+        print(f"Warning: Failed to remove project from Pinecone: {e}")
+
     return {"message": "Project deleted successfully"}
+
+@project_router.get("/search", response_model=list[ProjectResponse], status_code=200)
+async def search_projects_endpoint(
+    request: Request,
+    q: str,
+    auth_user_id: int = Depends(get_current_user_id)
+):
+    """
+    Semantic search over projects using Pinecone.
+    Returns projects ranked by relevance to the query.
+    """
+    if not q or len(q.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+
+    projects_collection = get_projects_collection(request)
+
+    # 1. Semantic search in Pinecone
+    search_results = pinecone_search_projects(q.strip(), k=20)
+
+    if not search_results:
+        return []
+
+    # 2. Get matching project titles from metadata
+    matched_titles = [r["metadata"].get("title", "") for r in search_results]
+
+    # 3. Fetch full project docs from MongoDB by title
+    matched_projects = await projects_collection.find(
+        {"title": {"$in": matched_titles}}
+    ).to_list(length=None)
+
+    # 4. Build lookup for ordering
+    title_to_project = {}
+    for project in matched_projects:
+        project["id"] = str(project.pop("_id"))
+        title_to_project[project["title"]] = project
+
+    # 5. Return in relevance order
+    ordered_results = []
+    for r in search_results:
+        title = r["metadata"].get("title", "")
+        if title in title_to_project:
+            ordered_results.append(ProjectResponse(**title_to_project[title]))
+
+    return ordered_results
+
 
 @project_router.get("/all-projects", response_model=list[ProjectResponse], status_code=200)
 async def get_all_projects(request : Request, auth_user_id: int=Depends(get_current_user_id)):

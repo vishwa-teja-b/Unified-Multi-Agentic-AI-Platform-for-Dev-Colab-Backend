@@ -10,6 +10,22 @@ from app.models.User import User
 teams_router = APIRouter(prefix="/api/teams", tags=["Teams"])
 
 
+@teams_router.get("/my-teams", response_model=list[TeamResponse], status_code=200)
+async def get_my_teams(
+    request: Request,
+    auth_user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_session),
+):
+    """Fetch all teams where the authenticated user is a member."""
+    teams_collection = get_teams_collection(request)
+    cursor = teams_collection.find({"team_members.user_id": auth_user_id})
+    teams = []
+    async for team in cursor:
+        team["id"] = str(team.pop("_id"))
+        team = _enrich_members_with_usernames(team, session)
+        teams.append(TeamResponse(**team))
+    return teams
+
 def _enrich_members_with_usernames(team: dict, session: Session) -> dict:
     """Resolve user_ids to usernames from the SQL User table."""
     user_ids = [m["user_id"] for m in team.get("team_members", [])]

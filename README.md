@@ -39,6 +39,7 @@
 - **Get Project by ID** — Retrieve single project details
 - **Update Project** — Modify project fields
 - **Delete Project** — Remove project
+- **Semantic Search** — Find projects by natural language (e.g., "AI chat app") using Pinecone embeddings
 
 ### 🤖 AI Team Formation Agent (Phase 4)
 - **Role Analysis** — LLM identifies required team roles from project requirements
@@ -218,6 +219,17 @@ backend/
 | `GET` | `/api/planned-projects/project/{project_id}` | 🔒 | Get generated roadmap |
 | `PATCH` | `/api/planned-projects/tasks` | 🔒 | Update task status |
 
+### Sessions (🔒 Protected)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/rooms` | 🔒 | List active coding sessions for user |
+| `POST` | `/api/rooms` | 🔒 | Create/Get a session for a project |
+
+### Code Execution (🔒 Protected)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/execution` | 🔒 | Execute code via Piston (Docker) |
+
 ### Example: Create Project (with atomic team creation)
 ```bash
 curl -X POST http://localhost:8000/api/projects/create-project \
@@ -295,7 +307,11 @@ MAIL_USERNAME="your-email@gmail.com"
 MAIL_PASSWORD="your-app-password"
 MAIL_FROM="your-email@gmail.com"
 MAIL_PORT=587
+MAIL_PORT=587
 MAIL_SERVER="smtp.gmail.com"
+
+# Code Execution (Piston)
+PISTON_API_URL="http://localhost:2000/api/v2"
 ```
 
 ### 4. Run Server
@@ -456,8 +472,8 @@ Managed via `asyncio.create_task()` in the FastAPI lifespan.
 - [x] Phase 4: AI Agent — Team Formation (LangGraph) ✅
 - [x] Phase 5: Invitations, Join Requests & Teams ✅
 - [x] Phase 6: AI Agent — Project Planner ✅ NEW
-- [ ] Phase 7: Real-time collaboration (WebSocket)
-- [ ] Phase 8: Code editor integration
+- [/] Phase 7: Real-time collaboration (Sessions & Sockets) 🚧 IN PROGRESS
+- [/] Phase 8: Code editor integration (Execution Engine) 🚧 IN PROGRESS
 - [ ] Phase 9: Whiteboard (tldraw)
 
 ---
