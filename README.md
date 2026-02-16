@@ -230,6 +230,17 @@ backend/
 |--------|----------|------|-------------|
 | `POST` | `/api/execution` | 🔒 | Execute code via Piston (Docker) |
 
+### ⚡ Real-time Collaboration (Socket.IO)
+The backend uses `python-socketio` for real-time events.
+
+| Event Category | Events | Description |
+|----------------|--------|-------------|
+| **Connection** | `join_request`, `user_joined`, `user_disconnected` | Room management & presence |
+| **File System** | `sync_file_structure`, `file_created`, `file_updated` | Sync files & folders across clients |
+| **Chat** | `send_message`, `receive_message` | Team chat within coding rooms |
+| **Whiteboard** | `drawing_update`, `sync_drawing` | Shared tldraw canvas state |
+| **Cursor** | `cursor_move`, `typing_start` | Live cursor tracking & typing indicators |
+
 ### Example: Create Project (with atomic team creation)
 ```bash
 curl -X POST http://localhost:8000/api/projects/create-project \
@@ -306,7 +317,6 @@ REFRESH_TOKEN_EXPIRE_DAYS=21
 MAIL_USERNAME="your-email@gmail.com"
 MAIL_PASSWORD="your-app-password"
 MAIL_FROM="your-email@gmail.com"
-MAIL_PORT=587
 MAIL_PORT=587
 MAIL_SERVER="smtp.gmail.com"
 
@@ -472,9 +482,9 @@ Managed via `asyncio.create_task()` in the FastAPI lifespan.
 - [x] Phase 4: AI Agent — Team Formation (LangGraph) ✅
 - [x] Phase 5: Invitations, Join Requests & Teams ✅
 - [x] Phase 6: AI Agent — Project Planner ✅ NEW
-- [/] Phase 7: Real-time collaboration (Sessions & Sockets) 🚧 IN PROGRESS
-- [/] Phase 8: Code editor integration (Execution Engine) 🚧 IN PROGRESS
-- [ ] Phase 9: Whiteboard (tldraw)
+- [x] Phase 7: Real-time collaboration (Sessions & Sockets) ✅
+- [x] Phase 8: Code editor integration (Execution Engine) ✅
+- [ ] Phase 9: Whiteboard (tldraw) 🚧 IN PROGRESS
 
 ---
 
