@@ -224,6 +224,8 @@ backend/
 |--------|----------|------|-------------|
 | `GET` | `/api/rooms` | 🔒 | List active coding sessions for user |
 | `POST` | `/api/rooms` | 🔒 | Create/Get a session for a project |
+| `GET` | `/api/rooms/{project_id}/workspace` | 🔒 | Get workspace state |
+| `PUT` | `/api/rooms/{project_id}/workspace` | 🔒 | Save workspace state |
 
 ### Code Execution (🔒 Protected)
 | Method | Endpoint | Auth | Description |
@@ -236,7 +238,7 @@ The backend uses `python-socketio` for real-time events.
 | Event Category | Events | Description |
 |----------------|--------|-------------|
 | **Connection** | `join_request`, `user_joined`, `user_disconnected` | Room management & presence |
-| **File System** | `sync_file_structure`, `file_created`, `file_updated` | Sync files & folders across clients |
+| **File System** | `sync_file_structure`, `file_created`, `file_updated`, `directory_created`, `directory_updated`, `directory_renamed`, `directory_deleted` | Sync files & folders across clients |
 | **Chat** | `send_message`, `receive_message` | Team chat within coding rooms |
 | **Whiteboard** | `drawing_update`, `sync_drawing` | Shared tldraw canvas state |
 | **Cursor** | `cursor_move`, `typing_start` | Live cursor tracking & typing indicators |
@@ -484,7 +486,7 @@ Managed via `asyncio.create_task()` in the FastAPI lifespan.
 - [x] Phase 6: AI Agent — Project Planner ✅ NEW
 - [x] Phase 7: Real-time collaboration (Sessions & Sockets) ✅
 - [x] Phase 8: Code editor integration (Execution Engine) ✅
-- [ ] Phase 9: Whiteboard (tldraw) 🚧 IN PROGRESS
+- [x] Phase 9: Whiteboard (tldraw) - Backend Ready ✅
 
 ---
 

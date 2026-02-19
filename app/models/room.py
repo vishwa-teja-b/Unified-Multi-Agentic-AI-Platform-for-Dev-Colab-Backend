@@ -47,3 +47,15 @@ class RoomResponse(BaseModel):
     project_id: str
     participants: List[Participant]
     created_at: datetime
+
+class WorkspaceUpdate(BaseModel):
+    fileStructure: Optional[Dict[str, Any]] = None
+    drawingData: Optional[Dict[str, Any]] = None
+
+class WorkspaceResponse(BaseModel):
+    fileStructure: Dict[str, Any] = {}
+    drawingData: Optional[Dict[str, Any]] = None
+
+class WorkspaceSaveResponse(BaseModel):
+    message: str
+    project_id: str

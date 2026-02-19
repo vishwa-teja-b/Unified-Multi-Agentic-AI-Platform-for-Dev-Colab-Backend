@@ -4,6 +4,8 @@ from app.dependencies.collections import get_profiles_collection
 from app.dependencies.auth import get_current_user_id
 from app.dto.profile_schema import ProfileCreateRequest, ProfileResponse
 from app.vector_stores.pinecone_db import index_profile
+from app.db.mysql_connection import get_session
+from sqlmodel import Session
 
 profile_router = APIRouter(prefix="/api/profiles", tags=["Profiles Creation and Skill Indexing"])
 
@@ -28,8 +30,18 @@ def construct_social_urls(profile: dict) -> dict:
 
 # Simple test endpoint to verify auth works
 @profile_router.get("/test-auth")
-def test_auth(user_id: int = Depends(get_current_user_id)):
-    return {"message": "Auth works!", "user_id": user_id}
+def test_auth(
+    auth_user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_session)
+):
+    from app.models.User import User
+    user = session.get(User, auth_user_id)
+    return {
+        "message": "Auth works!", 
+        "user_id": auth_user_id,
+        "username": user.username if user else "Unknown",
+        "email": user.email if user else "Unknown"
+    }
 
 
 @profile_router.post("/create-profile", response_model=ProfileResponse, status_code=201)

@@ -20,3 +20,4 @@
 /app/tasks/__pycache__
 /app/agents/project_planner/__pycache__
 /app/agents/project_planner/nodes/__pycache__
+/app/sockets/__pycache__

@@ -24,3 +24,6 @@ def get_teams_collection(request: Request):
 
 def get_project_plans_collection(request: Request):
     return request.app.state.db["project_plans"]
+
+def get_rooms_collection(request: Request):
+    return request.app.state.db["rooms"]

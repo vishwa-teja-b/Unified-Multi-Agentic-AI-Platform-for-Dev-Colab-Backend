@@ -10,7 +10,7 @@ def get_chat_llm():
     chat_llm = ChatOpenAI(
         model=os.getenv("MODEL_1"),
         base_url=OPENROUTER_BASE_URL,
-        api_key=os.getenv("OPEN_ROUTER_API_KEY_1"),
+        api_key=os.getenv("OPEN_ROUTER_API_KEY_4"),
         temperature=0.5,
     )
 

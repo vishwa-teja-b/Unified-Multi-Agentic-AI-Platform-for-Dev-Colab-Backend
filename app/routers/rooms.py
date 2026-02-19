@@ -1,15 +1,20 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, status
+from typing import Dict, List
 from app.dependencies.auth import get_current_user_id
-from app.dependencies.collections import get_project_plans_collection, get_projects_collection
-from app.models.room import Room, RoomCreate, RoomResponse
-from app.db.mongo import get_database
+from app.dependencies.collections import (
+    get_project_plans_collection, 
+    get_projects_collection,
+    get_rooms_collection,
+    get_teams_collection
+)
+from app.models.room import Room, RoomCreate, RoomResponse, WorkspaceUpdate, WorkspaceResponse, WorkspaceSaveResponse
 from bson import ObjectId
 from datetime import datetime
 
 rooms_router = APIRouter(prefix="/api/rooms", tags=["Collaboration Rooms"])
 
 
-@rooms_router.get("", response_model=list[dict], status_code=200)
+@rooms_router.get("", response_model=List[dict], status_code=200)
 async def list_my_rooms(
     request: Request,
     auth_user_id: int = Depends(get_current_user_id)
@@ -18,9 +23,9 @@ async def list_my_rooms(
     List all rooms where the current user owns the project or is a team member.
     Returns rooms enriched with project_title.
     """
-    db = await get_database()
-    rooms_collection = db["rooms"]
+    rooms_collection = get_rooms_collection(request)
     projects_collection = get_projects_collection(request)
+    teams_collection = get_teams_collection(request)
 
     # Get user's project IDs (projects they own)
     owned_cursor = projects_collection.find(
@@ -32,7 +37,6 @@ async def list_my_rooms(
         owned_ids.add(str(p["_id"]))
 
     # Get project IDs where user is a team member
-    teams_collection = db["teams"]
     team_cursor = teams_collection.find(
         {"team_members.user_id": auth_user_id},
         {"project_id": 1}
@@ -77,6 +81,7 @@ async def create_room(
     Prerequisite: Project Plan must exist.
     """
     project_plans_collection = get_project_plans_collection(request)
+    rooms_collection = get_rooms_collection(request)
     
     # 1. Check for Project Plan
     plan = await project_plans_collection.find_one({"project_id": room_data.project_id})
@@ -86,9 +91,6 @@ async def create_room(
             detail="Project Plan required to start session. Please use the Project Planner Agent first."
         )
         
-    db = await get_database()
-    rooms_collection = db["rooms"]
-    
     # Check if room already exists for this project
     existing_room = await rooms_collection.find_one({"project_id": room_data.project_id})
     if existing_room:
@@ -115,11 +117,67 @@ async def get_room(
     """
     Get room details by Project ID.
     """
-    db = await get_database()
-    rooms_collection = db["rooms"]
+    rooms_collection = get_rooms_collection(request)
     
     room = await rooms_collection.find_one({"project_id": project_id})
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
         
     return RoomResponse(**room)
+
+
+@rooms_router.put("/{project_id}/workspace", response_model=WorkspaceSaveResponse)
+async def save_workspace(
+    project_id: str,
+    workspace_data: WorkspaceUpdate,
+    auth_user_id: int = Depends(get_current_user_id),
+    request: Request = None # Keep request accessible if needed by dependencies, though not used directly here
+):
+    """
+    Save workspace state (file structure + whiteboard drawing) to the room document.
+    """
+    rooms_collection = get_rooms_collection(request)
+    
+    update_fields: Dict = {"updated_at": datetime.utcnow()}
+    
+    # Only update fields that were sent in the request
+    update_data = workspace_data.model_dump(exclude_unset=True)
+    if "fileStructure" in update_data:
+        update_fields["fileStructure"] = update_data["fileStructure"]
+    if "drawingData" in update_data:
+        update_fields["drawingData"] = update_data["drawingData"]
+    
+    result = await rooms_collection.update_one(
+        {"project_id": project_id},
+        {"$set": update_fields}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    return {"message": "Workspace saved", "project_id": project_id}
+
+
+@rooms_router.get("/{project_id}/workspace", response_model=WorkspaceResponse)
+async def get_workspace(
+    request: Request,
+    project_id: str,
+    auth_user_id: int = Depends(get_current_user_id)
+):
+    """
+    Get saved workspace state (file structure + whiteboard drawing).
+    """
+    rooms_collection = get_rooms_collection(request)
+    
+    room = await rooms_collection.find_one(
+        {"project_id": project_id},
+        {"fileStructure": 1, "drawingData": 1, "_id": 0}
+    )
+    
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    return {
+        "fileStructure": room.get("fileStructure", {}),
+        "drawingData": room.get("drawingData", None)
+    }
