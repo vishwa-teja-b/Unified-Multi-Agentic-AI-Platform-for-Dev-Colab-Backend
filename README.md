@@ -21,58 +21,87 @@
 
 ## ✨ Features
 
-### 🔐 Authentication System (Phase 1)
-- **User Registration** — Secure signup with email validation
+### 🔐 Authentication System
+- **User Registration** — Secure signup with email validation & auto-profile stub
 - **User Login** — JWT-based access & refresh tokens
-- **Password Reset** — OTP via email with expiry
-- **Token Refresh** — Seamless session management
+- **Password Reset** — OTP via email with 30-minute expiry
+- **Token Refresh** — Seamless session management with 21-day refresh tokens
 - **Background Cleanup** — Auto-purges expired OTPs every 15 minutes
 
-### 👤 Profile Management (Phase 2)
-- **Create Profile** — Multi-step profile wizard with skills & interests
+### 👤 Profile Management
+- **Create Profile** — Multi-step profile wizard with skills, interests, languages & timezone
 - **Get Profile** — Retrieve authenticated user's profile
-- **Update Profile** — Partial profile updates
+- **Get Profile by Username** — View other users' public profiles
+- **Update Profile** — Full profile updates with Pinecone re-indexing
 - **Skill Indexing** — Profiles indexed in Pinecone for semantic search
+- **Social URL Construction** — Auto-builds full GitHub/LinkedIn/Portfolio URLs from usernames
+- **Profile Completeness Check** — Frontend redirects to profile creation if incomplete
 
-### 📂 Projects (Phase 3)
+### 📂 Project Management
 - **Create Project** — Define project with skills, features, team size; atomically creates a team with owner as first member
 - **Get My Projects** — List all user's projects
 - **Get All Projects** — Browse projects from other users (Explore view)
 - **Get Project by ID** — Retrieve single project details
 - **Update Project** — Modify project fields
-- **Delete Project** — Remove project
+- **Delete Project** — Remove project & clean up Pinecone index
 - **Semantic Search** — Find projects by natural language (e.g., "AI chat app") using Pinecone embeddings
 
-### 🤖 AI Team Formation Agent (Phase 4)
+### 🤖 AI Team Formation Agent
 - **Role Analysis** — LLM identifies required team roles from project requirements
 - **Skill Matching** — Semantic search finds candidates via Pinecone vectors
 - **Candidate Evaluation** — LLM scores candidates with reasoning
 - **LangGraph Workflow** — Multi-node agent orchestration with MongoDB checkpoints
 
-### 📨 Invitations & Join Requests (Phase 5) ✨ NEW
+### 🗓️ AI Project Planner Agent
+- **Feature Extraction** — LLM analyzes project description to identify key features
+- **Milestone Definition** — Breaks down features into logical sprints/milestones
+- **Task Generation** — Creates detailed actionable tasks for each sprint
+- **Sprint Date Computation** — Auto-calculates start/end dates for sprints based on project duration
+- **Sprint Locking** — Sprints auto-lock when their end date passes; tasks in locked sprints are read-only
+- **Current Sprint Detection** — Backend computes the current sprint number based on date ranges
+- **Task Status Updates** — Update individual task statuses (To Do → In Progress → Done)
+- **Async Execution** — LangGraph workflow runs asynchronously to prevent timeouts
+- **Structured Output** — Returns JSON-compliant roadmaps using `LLMParser`
+
+### 📨 Invitations & Join Requests
 - **Send Invitation** — Project owner invites recommended teammates
 - **Get My Invitations** — Retrieve all invitations received by the user
-- **Update Invitation** — Accept or reject an invitation
+- **Accept/Reject Invitation** — Accept adds user to team automatically
 - **Request to Join** — Non-owner users can request to join a project with a role and optional message
 - **Get Join Requests** — Project owner views all pending join requests
 - **Respond to Join Request** — Owner accepts or rejects; on accept, the requester is added to the team
 - **Background Cleanup** — Auto-deletes old invitations daily (older than 7 days)
 
-### 👥 Teams (Phase 5) ✨ NEW
+### 👥 Team Management
 - **Auto-creation** — Team is created atomically when a project is created (owner as first member)
-- **team_id Reference** — Projects store a `team_id` reference; team data lives in the `teams` collection (single source of truth)
+- **Get My Teams** — List all teams the authenticated user belongs to
 - **Get Team by ID** — Retrieve team details by team document ID
 - **Get Team by Project ID** — Retrieve team details by associated project ID
-- **Member Management** — New members are added via join request acceptance
+- **Username Resolution** — Batch SQL lookup to enrich team member data with usernames
+- **Member Management** — New members are added via invitation acceptance or join request approval
 
-### 🗓️ AI Project Planner Agent (Phase 6) ✨ NEW
-- **Feature Extraction** — LLM analyzes project description to identify key features
-- **Milestone Definition** — Breaks down features into logical sprints/milestones
-- **Task Generation** — Creates detailed actionable tasks for each sprint
-- **Async Execution** — LangGraph workflow runs asynchronously to prevent timeouts
-- **Structured Output** — Returns JSON-compliant roadmaps using `LLMParser`
-- **Sprint Locking** — Sprints auto-lock when their end date passes; tasks in locked sprints are read-only
-- **Current Sprint Detection** — Backend computes the current sprint number based on date ranges
+### 💻 Collaboration Rooms (Sessions)
+- **Create/Get Room** — One room per project; requires a project plan to exist
+- **List My Rooms** — Shows all rooms where user is owner or team member
+- **Workspace Persistence** — Save & restore file structure and whiteboard state per room
+- **Room-Project Linking** — Rooms are enriched with project titles for display
+
+### ⚡ Real-time Collaboration (Socket.IO)
+- **Room Join/Leave** — Users join rooms with username; presence is broadcast to all participants
+- **Live User Tracking** — In-memory user store tracks connected users per room with online/offline status
+- **File Sync** — Broadcast file structure changes (create, update, rename, delete) to all room members
+- **Directory Sync** — Broadcast directory operations (create, update, rename, delete) across clients
+- **Real-time Code Editing** — `file_updated` events sync code changes character-by-character
+- **Team Chat** — `send_message` / `receive_message` events for in-room team messaging
+- **Whiteboard** — `drawing_update` / `sync_drawing` / `request_drawing` events for shared tldraw canvas
+- **Cursor Tracking** — `typing_start` / `typing_pause` events with live cursor position indicators
+
+### 🖥️ Code Execution Engine
+- **Multi-language Support** — Python, JavaScript, TypeScript, Java, C, C++, Go, Rust, PHP, Ruby, Kotlin, Swift
+- **Self-hosted Piston** — Sandboxed code execution via Docker container (local Piston API)
+- **Compile & Run** — Separate compile and run stages with configurable timeouts
+- **stdin Support** — Pass input to programs via standard input
+- **Error Handling** — Graceful error messages for compilation errors, runtime errors, and service unavailability
 
 ### 🏗️ Architecture
 - **Framework:** FastAPI with async/await support
@@ -80,6 +109,8 @@
 - **App Database:** MongoDB (Atlas) with PyMongo async
 - **Vector Store:** Pinecone with HuggingFace embeddings
 - **AI Agents:** LangGraph + OpenRouter (free LLMs)
+- **Real-time:** Socket.IO (python-socketio) with in-memory room management
+- **Code Execution:** Self-hosted Piston (Docker) with multi-language support
 - **Security:** HS256 JWT tokens, bcrypt password hashing, OAuth2PasswordBearer
 - **Email:** FastAPI-Mail with Gmail SMTP
 
