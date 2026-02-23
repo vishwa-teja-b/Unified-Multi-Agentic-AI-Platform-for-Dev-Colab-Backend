@@ -9,9 +9,48 @@ from app.dto.project_planner_schema import ProjectPlannerRequest, ProjectPlanner
 from app.agents.team_formation.state import TeamFormationState
 from app.dto.team_schema import TeamResponse
 from app.models.project_plan import ProjectPlan
-from datetime import datetime
+from datetime import datetime, timedelta
+import re
 
 agent_router = APIRouter(prefix="/api/agents", tags=["Team Formation Agent"])
+
+
+def parse_duration_to_days(duration_str: str) -> int:
+    """
+    Parse a human-readable duration string into a number of days.
+    Supports: '2 weeks', '1 month', '10 days', '3 months', etc.
+    Defaults to 14 days if parsing fails.
+    """
+    duration_str = duration_str.strip().lower()
+    match = re.match(r'(\d+)\s*(day|days|week|weeks|month|months)', duration_str)
+    if not match:
+        return 14  # default to 2 weeks
+    
+    value = int(match.group(1))
+    unit = match.group(2)
+    
+    if 'day' in unit:
+        return value
+    elif 'week' in unit:
+        return value * 7
+    elif 'month' in unit:
+        return value * 30
+    return 14
+
+
+def compute_sprint_dates(roadmap: list, start_date: datetime) -> list:
+    """
+    Compute start_date and end_date for each sprint sequentially.
+    Each sprint starts when the previous one ends.
+    """
+    current_start = start_date
+    for sprint in roadmap:
+        duration_days = parse_duration_to_days(sprint.get("duration", "2 weeks"))
+        sprint_end = current_start + timedelta(days=duration_days)
+        sprint["start_date"] = current_start.isoformat()
+        sprint["end_date"] = sprint_end.isoformat()
+        current_start = sprint_end
+    return roadmap
 
 @agent_router.post("/team-formation", response_model=TeamFormationResponse, status_code=200)
 async def team_formation_agent(
@@ -135,12 +174,16 @@ async def project_planner_agent(
         
         # Save Plan to DB
         try:
+            # Compute sprint dates before saving
+            now = datetime.utcnow()
+            roadmap_with_dates = compute_sprint_dates(result["roadmap"], now)
+            
             plan_data = ProjectPlan(
                 project_id=result["project_id"],
-                roadmap=result["roadmap"],
+                roadmap=roadmap_with_dates,
                 extracted_features=result["extracted_features"],
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=now,
+                updated_at=now
             )
             
             # Upsert: Update if exists, Insert if not
@@ -156,7 +199,7 @@ async def project_planner_agent(
         
         return ProjectPlannerResponse(
             project_id=result["project_id"],
-            roadmap=result["roadmap"],
+            roadmap=roadmap_with_dates,
             extracted_features=result["extracted_features"],
             error=result.get("error")
         )

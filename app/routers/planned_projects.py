@@ -7,7 +7,7 @@ from datetime import datetime
 
 planned_projects_router = APIRouter(prefix="/api/planned-projects", tags=["Planned Projects"])
 
-@planned_projects_router.get("/project/{project_id}", response_model=ProjectPlan, status_code=200)
+@planned_projects_router.get("/project/{project_id}", status_code=200)
 async def get_project_plan(
     request: Request, 
     project_id: str, 
@@ -23,8 +23,40 @@ async def get_project_plan(
     
     if not plan:
         raise HTTPException(status_code=404, detail="Project plan not found. Generate one first.")
+    
+    plan_obj = ProjectPlan(**plan)
+    
+    # Compute current sprint number based on dates
+    now = datetime.utcnow()
+    current_sprint_number = 1  # Default to first sprint
+    for sprint in plan_obj.roadmap:
+        start_date_str = sprint.get("start_date") if isinstance(sprint, dict) else None
+        end_date_str = sprint.get("end_date") if isinstance(sprint, dict) else None
+        sprint_num = sprint.get("sprint_number", 1) if isinstance(sprint, dict) else 1
         
-    return ProjectPlan(**plan)
+        if start_date_str and end_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str)
+                end_date = datetime.fromisoformat(end_date_str)
+                if start_date <= now < end_date:
+                    current_sprint_number = sprint_num
+                    break
+                elif now >= end_date:
+                    current_sprint_number = sprint_num + 1
+            except (ValueError, TypeError):
+                pass
+    
+    # Clamp to valid range
+    max_sprint = max(
+        (s.get("sprint_number", 1) for s in plan_obj.roadmap if isinstance(s, dict)),
+        default=1
+    )
+    current_sprint_number = min(current_sprint_number, max_sprint)
+    
+    # Return plan with current_sprint_number injected
+    response = plan_obj.model_dump()
+    response["current_sprint_number"] = current_sprint_number
+    return response
 
 @planned_projects_router.patch("/tasks", status_code=200)
 async def update_task_status(

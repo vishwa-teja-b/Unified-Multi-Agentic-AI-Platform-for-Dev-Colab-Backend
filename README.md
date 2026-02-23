@@ -9,6 +9,8 @@
 ![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
 ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-FF6B6B?style=for-the-badge&logo=graph&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-010101?style=for-the-badge&logo=socketdotio&logoColor=white)
 ![Postman](https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=postman&logoColor=white)
 
 **A modern, scalable backend for developer collaboration with AI-powered multi-agent capabilities.**
@@ -69,6 +71,8 @@
 - **Task Generation** — Creates detailed actionable tasks for each sprint
 - **Async Execution** — LangGraph workflow runs asynchronously to prevent timeouts
 - **Structured Output** — Returns JSON-compliant roadmaps using `LLMParser`
+- **Sprint Locking** — Sprints auto-lock when their end date passes; tasks in locked sprints are read-only
+- **Current Sprint Detection** — Backend computes the current sprint number based on date ranges
 
 ### 🏗️ Architecture
 - **Framework:** FastAPI with async/await support
@@ -89,7 +93,8 @@ backend/
 │   ├── config/
 │   │   ├── jwt_config.py       # JWT token creation & verification
 │   │   ├── security.py         # Password hashing (bcrypt)
-│   │   └── email_config.py     # SMTP configuration
+│   │   ├── email_config.py     # SMTP configuration
+│   │   └── external_services.py # Piston API URL & external service config
 │   │
 │   ├── db/
 │   │   ├── mysql_connection.py # MySQL engine & session
@@ -146,6 +151,14 @@ backend/
 │   │           ├── nodes/               # Planner logic nodes
 │   │           ├── graph.py             # Planner graph definition
 │   │           └── state.py             # Planner state schema
+│   │
+│   ├── sockets/
+│   │   ├── events.py           # Socket.IO event registration
+│   │   └── handlers.py         # Socket.IO event handlers (join, file sync, chat, whiteboard, cursor)
+│   │
+│   ├── utils/
+│   │   ├── llm_parser.py       # Safe LLM response parsing
+│   │   └── timezone_utils.py   # Sprint date computation & timezone support
 │   │
 │   ├── services/
 │   │   └── mail_service.py     # Email sending & OTP generation
@@ -204,6 +217,7 @@ backend/
 ### Teams (🔒 Protected)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
+| `GET` | `/api/teams/my-teams` | 🔒 | List all teams the user belongs to |
 | `GET` | `/api/teams/team/{team_id}` | 🔒 | Get team by team ID |
 | `GET` | `/api/teams/project/{project_id}` | 🔒 | Get team by project ID |
 
@@ -224,6 +238,7 @@ backend/
 |--------|----------|------|-------------|
 | `GET` | `/api/rooms` | 🔒 | List active coding sessions for user |
 | `POST` | `/api/rooms` | 🔒 | Create/Get a session for a project |
+| `GET` | `/api/rooms/{project_id}` | 🔒 | Get room details by project ID |
 | `GET` | `/api/rooms/{project_id}/workspace` | 🔒 | Get workspace state |
 | `PUT` | `/api/rooms/{project_id}/workspace` | 🔒 | Save workspace state |
 
