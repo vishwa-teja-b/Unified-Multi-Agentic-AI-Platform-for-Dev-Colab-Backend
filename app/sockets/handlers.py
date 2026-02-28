@@ -235,14 +235,33 @@ def register_socket_handlers(sio: socketio.AsyncServer):
             
     # --- CHAT EVENTS ---
     
+    @sio.on(SocketEvent.JOIN_CHAT.value)
+    async def handle_join_chat(sid, data):
+        """User joins a specific chat room (direct or team)"""
+        chat_room_id = data.get("chatRoomId")
+        if chat_room_id:
+            await sio.enter_room(sid, f"chat_{chat_room_id}")
+            print(f"User {sid} joined chat room: chat_{chat_room_id}")
+
+    @sio.on(SocketEvent.LEAVE_CHAT.value)
+    async def handle_leave_chat(sid, data):
+        chat_room_id = data.get("chatRoomId")
+        if chat_room_id:
+            sio.leave_room(sid, f"chat_{chat_room_id}")
+            print(f"User {sid} left chat room: chat_{chat_room_id}")
+            
     @sio.on(SocketEvent.SEND_MESSAGE.value)
     async def handle_send_message(sid, data):
-        room_id = get_room_id(sid)
-        if room_id:
+        """
+        Broadcasting a message to a specific chat room.
+        Data should contain: { 'chatRoomId': '...', 'message': {...} }
+        """
+        chat_room_id = data.get("chatRoomId")
+        if chat_room_id:
             await sio.emit(
                 SocketEvent.RECEIVE_MESSAGE.value,
-                data, # { "user": "...", "message": "...", "timestamp": "..." }
-                room=room_id,
+                data.get("message"), 
+                room=f"chat_{chat_room_id}",
                 skip_sid=sid
             )
 

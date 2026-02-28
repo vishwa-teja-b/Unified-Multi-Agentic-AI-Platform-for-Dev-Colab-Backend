@@ -273,6 +273,17 @@ backend/
 | `GET` | `/api/rooms/{project_id}/workspace` | 🔒 | Get workspace state |
 | `PUT` | `/api/rooms/{project_id}/workspace` | 🔒 | Save workspace state |
 
+### Chat (🔒 Protected)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/chat/new-chat` | 🔒 | Create/Get a direct chat with a user |
+| `POST` | `/api/chat/team-chat` | 🔒 | Create/Get a team chat for a project |
+| `GET` | `/api/chat/get-chat-rooms` | 🔒 | List all chats the user is part of |
+| `GET` | `/api/chat/search-dev` | 🔒 | Search for users by name/username |
+| `GET` | `/api/chat/{room_id}/messages` | 🔒 | Get chat history for a room |
+| `POST` | `/api/chat/{room_id}/messages` | 🔒 | Send a message to a room |
+| `POST` | `/api/chat/{room_id}/mark-read` | 🔒 | Mark unread messages as read |
+
 ### Code Execution (🔒 Protected)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
@@ -517,6 +528,40 @@ Managed via `asyncio.create_task()` in the FastAPI lifespan.
   "extracted_features": ["Login", "Dashboard"],
   "created_at": "2026-02-05T10:00:00Z",
   "updated_at": "2026-02-05T12:00:00Z"
+}
+```
+
+---
+
+### MongoDB: Chats Collection ✨ NEW
+```json
+{
+  "_id": "ObjectId",
+  "room_type": "team", // or "direct"
+  "participants": [1, 4, 5],
+  "team_id": "682abc...", // only for team rooms
+  "last_message": {
+    "_id": "ObjectId",
+    "room_id": "ObjectId",
+    "sender_id": 4,
+    "text": "Hello everyone!",
+    "timestamp": "2026-02-06T15:30:00Z",
+    "is_read": false
+  },
+  "created_at": "2026-02-05T10:00:00Z",
+  "updated_at": "2026-02-06T15:30:00Z"
+}
+```
+
+### MongoDB: Messages Collection ✨ NEW
+```json
+{
+  "_id": "ObjectId",
+  "room_id": "ObjectId",
+  "sender_id": 4,
+  "text": "Hello everyone!",
+  "timestamp": "2026-02-06T15:30:00Z",
+  "is_read": false
 }
 ```
 

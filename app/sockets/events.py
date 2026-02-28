@@ -25,6 +25,8 @@ class SocketEvent(Enum):
     DIRECTORY_DELETED = "directory_deleted"
     
     # Chat
+    JOIN_CHAT = "join_chat"
+    LEAVE_CHAT = "leave_chat"
     SEND_MESSAGE = "send_message"
     RECEIVE_MESSAGE = "receive_message"
     

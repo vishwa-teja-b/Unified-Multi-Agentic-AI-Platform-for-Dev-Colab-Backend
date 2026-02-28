@@ -19,6 +19,7 @@ from app.routers.teams import teams_router
 from app.routers.planned_projects import planned_projects_router
 from app.routers.rooms import rooms_router
 from app.routers.execution import router as execution_router
+from app.routers.chat import router as chat_router
 from app.tasks.background_tasks import delete_old_invitations
 import os
 import socketio
@@ -91,6 +92,7 @@ fastapi_app.include_router(invitation_router)
 fastapi_app.include_router(teams_router)
 fastapi_app.include_router(planned_projects_router)
 fastapi_app.include_router(rooms_router)
+fastapi_app.include_router(chat_router)
 fastapi_app.include_router(execution_router)
 
 # --- SOCKET.IO SETUP ---
