@@ -6,6 +6,9 @@ from app.agents.project_planner.nodes.task_generation import task_generation_nod
 from langgraph.checkpoint.mongodb import MongoDBSaver
 import os
 from dotenv import load_dotenv
+import logging
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -40,7 +43,7 @@ async def invoke_project_planner_agent(graph, initial_state : dict, thread_id:st
 
         project_planner_agent = graph.compile(checkpointer=checkpointer)
 
-        print("Project Planner Agent Invoked")
+        logger.info("Project Planner Agent Invoked")
 
         config = {"configurable":{"thread_id" : f"{thread_id}"}}
 

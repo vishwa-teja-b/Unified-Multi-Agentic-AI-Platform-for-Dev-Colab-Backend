@@ -5,6 +5,9 @@ from pinecone import Pinecone,ServerlessSpec
 from dotenv import load_dotenv
 from langchain_core.documents import Document
 from fastapi import Depends
+import logging
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -113,11 +116,11 @@ def index_profile(profile: dict):
         vector_store = get_pinecone_vector_store()
         vector_store.add_documents(documents=[doc], ids=[str(profile.get("auth_user_id"))])
 
-        print(f"✅ Profile indexed: {profile.get('username')}")
+        logger.info("Profile indexed: %s", profile.get('username'))
         return {"success": True, "message": "Profile indexed successfully"}
 
     except Exception as e:
-        print(f"❌ Error indexing profile: {e}")
+        logger.error("Error indexing profile: %s", e)
         return {"success": False, "error": str(e)}
 
 
@@ -148,11 +151,11 @@ def index_project(project: dict):
         vector_store = get_projects_vector_store()
         vector_store.add_documents(documents=[doc], ids=[str(project.get("id"))])
 
-        print(f"✅ Project indexed: {project.get('title')}")
+        logger.info("Project indexed: %s", project.get('title'))
         return {"success": True, "message": "Project indexed successfully"}
 
     except Exception as e:
-        print(f"❌ Error indexing project: {e}")
+        logger.error("Error indexing project: %s", e)
         return {"success": False, "error": str(e)}
 
 
@@ -161,9 +164,9 @@ def delete_project_index(project_id: str):
     try:
         index = get_projects_pinecone_index()
         index.delete(ids=[project_id])
-        print(f"✅ Project removed from index: {project_id}")
+        logger.info("Project removed from index: %s", project_id)
     except Exception as e:
-        print(f"❌ Error deleting project index: {e}")
+        logger.error("Error deleting project index: %s", e)
 
 
 def search_projects(query: str, k: int = 10) -> list[dict]:
@@ -187,5 +190,5 @@ def search_projects(query: str, k: int = 10) -> list[dict]:
         return matches
 
     except Exception as e:
-        print(f"❌ Error searching projects: {e}")
+        logger.error("Error searching projects: %s", e)
         return []

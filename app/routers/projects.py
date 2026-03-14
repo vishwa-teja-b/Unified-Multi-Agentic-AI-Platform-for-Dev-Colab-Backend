@@ -6,6 +6,9 @@ from app.models.teams import Team, TeamMember
 from app.dependencies.collections import get_projects_collection, get_teams_collection
 from app.dependencies.auth import get_current_user_id
 from app.vector_stores.pinecone_db import index_project, delete_project_index, search_projects as pinecone_search_projects
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 project_router = APIRouter(prefix="/api/projects", tags=["Projects"])
@@ -70,7 +73,7 @@ async def create_project(
     try:
         index_project(created_project)
     except Exception as e:
-        print(f"Warning: Failed to index project in Pinecone: {e}")
+        logger.warning("Failed to index project in Pinecone: %s", e)
 
     return ProjectResponse(**created_project)
 
@@ -156,7 +159,7 @@ async def update_project(
     try:
         index_project(updated_project)
     except Exception as e:
-        print(f"Warning: Failed to re-index project in Pinecone: {e}")
+        logger.warning("Failed to re-index project in Pinecone: %s", e)
 
     return ProjectResponse(**updated_project)
 
@@ -176,7 +179,7 @@ async def delete_project(request: Request, project_id: str, auth_user_id: int = 
     try:
         delete_project_index(project_id)
     except Exception as e:
-        print(f"Warning: Failed to remove project from Pinecone: {e}")
+        logger.warning("Failed to remove project from Pinecone: %s", e)
 
     return {"message": "Project deleted successfully"}
 

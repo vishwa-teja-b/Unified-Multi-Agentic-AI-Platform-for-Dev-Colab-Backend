@@ -9,6 +9,9 @@ from app.models.User import User
 from app.services.mail_service import send_mail, generate_otp, generate_otp_expiry_time
 from app.models.password_reset_token import PasswordResetToken
 from app.db.mysql_connection import get_session
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 auth_router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -70,7 +73,7 @@ async def register(request: Request, data : UserRegisterRequest, session : Sessi
         # Compensating transaction: rollback MySQL user if MongoDB fails
         session.delete(user)
         session.commit()
-        print(f"[Saga Rollback] MongoDB profile creation failed, rolled back MySQL user: {e}")
+        logger.error("Saga Rollback: MongoDB profile creation failed, rolled back MySQL user: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Registration failed. Please try again."
@@ -121,7 +124,7 @@ def refresh_token(data : RefreshTokenRequest, session : Session = Depends(get_se
     try:
         payload = decode_token(data.refresh_token)
     except Exception as e:
-        print(f"❌ Token decode error: {e}")  # Debug log
+        logger.warning("Token decode error: %s", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token: {str(e)}"

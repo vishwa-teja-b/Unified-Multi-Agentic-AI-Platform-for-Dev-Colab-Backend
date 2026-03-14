@@ -4,12 +4,15 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from app.agents.llm_config import get_chat_llm_2 as get_llm
 from app.utils.llm_parser import parse_llm_output
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def task_generation_node(state: ProjectPlannerState) -> ProjectPlannerState:
     """
     Breaks down each sprint milestone into granular tasks and assigns them to team members.
     """
-    print("--- TASK GENERATION ---")
+    logger.info("TASK GENERATION")
     
     milestones = state.get("milestones", [])
     team_members = state.get("team_members", [])
@@ -79,7 +82,7 @@ async def task_generation_node(state: ProjectPlannerState) -> ProjectPlannerStat
             })
             
         except Exception as e:
-            print(f"❌ Error generating tasks for sprint {sprint_name}: {e}")
+            logger.error("Error generating tasks for sprint %s: %s", sprint_name, e)
             # Fallback: keep sprint but empty tasks
             final_roadmap.append({
                 **sprint,
@@ -87,5 +90,5 @@ async def task_generation_node(state: ProjectPlannerState) -> ProjectPlannerStat
                 "error": str(e)
             })
 
-    print(f"✅ Generated tasks for {len(final_roadmap)} sprints.")
+    logger.info("Generated tasks for %d sprints.", len(final_roadmap))
     return {"roadmap": final_roadmap}

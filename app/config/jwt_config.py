@@ -2,6 +2,9 @@ import os
 import jwt
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import logging
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -31,8 +34,8 @@ def decode_token(token: str) -> dict:
         result = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return result
     except jwt.ExpiredSignatureError:
-        print("❌ Token expired")
+        logger.warning("Token expired")
         raise Exception("Token expired")
     except jwt.InvalidTokenError as e:
-        print(f"❌ Invalid token error: {type(e).__name__}: {e}")
+        logger.warning("Invalid token error: %s: %s", type(e).__name__, e)
         raise Exception("Invalid token")

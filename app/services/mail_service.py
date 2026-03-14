@@ -2,6 +2,9 @@ from fastapi_mail import FastMail, MessageSchema, MessageType
 from app.config.email_config import mail_config
 import secrets
 from datetime import datetime, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 # FastAPI-Mail is async — email sending should never block requests
 
@@ -22,7 +25,7 @@ async def send_mail(to :str , otp : str):
     try:
         await fm.send_message(message)
     except Exception as e:
-        print(f"Error sending email: {e}")
+        logger.error("Error sending email: %s", e)
 
 def generate_otp():
     return secrets.randbelow(1000000)

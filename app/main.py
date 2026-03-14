@@ -24,8 +24,12 @@ from app.tasks.background_tasks import delete_old_invitations
 import os
 import socketio
 from app.sockets.handlers import register_socket_handlers
+import logging
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 MONGO_URI = os.getenv("MONGODB_URL")
 MONGODB_NAME = os.getenv("MONGODB_DB_NAME")
@@ -50,7 +54,7 @@ async def cleanup_used_otps():
                 session.delete(token)
 
             session.commit()
-            print(f"🧹 Cleaned up {len(tokens)} expired/used OTPs")
+            logger.info("Cleaned up %d expired/used OTPs", len(tokens))
             
         
 @asynccontextmanager
@@ -61,7 +65,7 @@ async def lifespan(app: FastAPI):
     app.state.mongo_client = mongo_client
     app.state.db = mongo_client[MONGODB_NAME]
 
-    print("MONGODB CONNECTION ESTABLISHED")
+    logger.info("MongoDB connection established")
     
     # Start background cleanup tasks
     cleanup_task = asyncio.create_task(cleanup_used_otps())
