@@ -9,7 +9,7 @@ from app.dependencies.collections import (
 )
 from app.models.room import Room, RoomCreate, RoomResponse, WorkspaceUpdate, WorkspaceResponse, WorkspaceSaveResponse
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timezone
 
 rooms_router = APIRouter(prefix="/api/rooms", tags=["Collaboration Rooms"])
 
@@ -100,7 +100,7 @@ async def create_room(
     new_room = Room(
         room_id=room_data.project_id, # Simplify: 1 Room per Project
         project_id=room_data.project_id,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         participants=[]
     )
     
@@ -138,7 +138,7 @@ async def save_workspace(
     """
     rooms_collection = get_rooms_collection(request)
     
-    update_fields: Dict = {"updated_at": datetime.utcnow()}
+    update_fields: Dict = {"updated_at": datetime.now(timezone.utc)}
     
     # Only update fields that were sent in the request
     update_data = workspace_data.model_dump(exclude_unset=True)

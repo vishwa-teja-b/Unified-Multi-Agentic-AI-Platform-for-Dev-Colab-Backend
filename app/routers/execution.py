@@ -7,6 +7,9 @@ import tempfile
 import asyncio
 from typing import List, Optional
 from app.config.external_services import PISTON_API_URL
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/execution", tags=["Code Execution"])
 
@@ -46,13 +49,13 @@ async def execute_code(request: ExecutionRequest):
                 "run_timeout": request.run_timeout,
             }
             
-            print(f"Executing Code (Self-Hosted): {payload}")
+            logger.info("Executing Code (Self-Hosted): %s", payload)
             
             # Forward directly to local Piston service
             response = await client.post(PISTON_API_URL, json=payload)
             
             if response.status_code != 200:
-                print(f"Piston Error Body: {response.text}")
+                logger.error("Piston Error Body: %s", response.text)
 
             response.raise_for_status()
             return response.json()
@@ -63,13 +66,13 @@ async def execute_code(request: ExecutionRequest):
                 detail="Code Execution Service (Piston) is unavailable. Please ensure Docker container is running."
             )
         except httpx.HTTPStatusError as e:
-            print(f"HTTPStatusError: {e}")
+            logger.error("HTTPStatusError: %s", e)
             raise HTTPException(
                 status_code=e.response.status_code,
                 detail=f"Piston API Error: {e.response.text}"
             )
         except Exception as e:
-            print(f"Exception: {e}")
+            logger.error("Exception: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=str(e)

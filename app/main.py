@@ -11,7 +11,7 @@ from app.routers.profiles import profile_router
 from app.routers.projects import project_router
 from app.routers.agents import agent_router
 from sqlmodel import Session, select, or_
-from datetime import datetime
+from datetime import datetime, timezone
 from app.db.mongo import create_mongo_client
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers.invitations import invitation_router
@@ -24,11 +24,16 @@ from app.tasks.background_tasks import delete_old_invitations
 import os
 import socketio
 from app.sockets.handlers import register_socket_handlers
+import logging
 
 load_dotenv()
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
 MONGO_URI = os.getenv("MONGODB_URL")
 MONGODB_NAME = os.getenv("MONGODB_DB_NAME")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 
 async def cleanup_used_otps():
     """Background worker that runs every 15 minutes to cleanup used OTPs"""
@@ -41,7 +46,7 @@ async def cleanup_used_otps():
                 select(PasswordResetToken).where(
                     or_(
                         PasswordResetToken.is_used == True,
-                        PasswordResetToken.expires_at < datetime.utcnow()
+                        PasswordResetToken.expires_at < datetime.now(timezone.utc)
                     )
                 )
             ).all()
@@ -50,7 +55,7 @@ async def cleanup_used_otps():
                 session.delete(token)
 
             session.commit()
-            print(f"🧹 Cleaned up {len(tokens)} expired/used OTPs")
+            logger.info("Cleaned up %d expired/used OTPs", len(tokens))
             
         
 @asynccontextmanager
@@ -61,7 +66,7 @@ async def lifespan(app: FastAPI):
     app.state.mongo_client = mongo_client
     app.state.db = mongo_client[MONGODB_NAME]
 
-    print("MONGODB CONNECTION ESTABLISHED")
+    logger.info("MongoDB connection established")
     
     # Start background cleanup tasks
     cleanup_task = asyncio.create_task(cleanup_used_otps())
@@ -78,7 +83,7 @@ fastapi_app = FastAPI(lifespan=lifespan)
 
 fastapi_app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development; restrict in production
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,7 +103,7 @@ fastapi_app.include_router(execution_router)
 # --- SOCKET.IO SETUP ---
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins='*' # Allow all origins for now
+    cors_allowed_origins=CORS_ORIGINS if CORS_ORIGINS != ['*'] else '*'
 )
 
 # Register Event Handlers

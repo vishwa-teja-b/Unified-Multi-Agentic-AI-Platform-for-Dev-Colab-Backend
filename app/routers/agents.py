@@ -9,8 +9,11 @@ from app.dto.project_planner_schema import ProjectPlannerRequest, ProjectPlanner
 from app.agents.team_formation.state import TeamFormationState
 from app.dto.team_schema import TeamResponse
 from app.models.project_plan import ProjectPlan
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 agent_router = APIRouter(prefix="/api/agents", tags=["Team Formation Agent"])
 
@@ -97,7 +100,7 @@ async def team_formation_agent(
         str(auth_user_id)
     )
 
-    print(final_state)
+    logger.debug("Final state: %s", final_state)
 
     return TeamFormationResponse(
         recommendations=final_state.get("recommendations", []),
@@ -111,7 +114,7 @@ async def project_planner_agent(
     request_body: ProjectPlannerRequest,
     auth_user_id: int = Depends(get_current_user_id)
 ):
-    print(f"--- Project Planner Agent Request Received for Project ID: {request_body.project_id} ---")
+    logger.info("Project Planner Agent Request Received for Project ID: %s", request_body.project_id)
     
     projects_collection = get_projects_collection(request)
     teams_collection = get_teams_collection(request)
@@ -120,9 +123,9 @@ async def project_planner_agent(
     # Fetch Project
     try:
         project = await projects_collection.find_one({"_id": ObjectId(request_body.project_id)})
-        print(f"Project found: {project.get('title', 'Unknown')}")
+        logger.info("Project found: %s", project.get('title', 'Unknown'))
     except:
-        print(f"Invalid Project ID format: {request_body.project_id}")
+        logger.warning("Invalid Project ID format: %s", request_body.project_id)
         raise HTTPException(status_code=400, detail="Invalid Project ID format")
         
     if not project:
@@ -135,11 +138,11 @@ async def project_planner_agent(
             team = await teams_collection.find_one({"_id": ObjectId(project["team_id"])})
             if team:
                 team_members = team.get("team_members", [])
-                print(f"Team found: {len(team_members)} members")
+                logger.info("Team found: %d members", len(team_members))
         except:
-            print("Invalid team ID format or team not found")
+            logger.warning("Invalid team ID format or team not found")
     else:
-        print("No team assigned to this project yet.")
+        logger.info("No team assigned to this project yet.")
             
     # Prepare State
     initial_state = {
@@ -163,19 +166,19 @@ async def project_planner_agent(
     
     # Run Agent
     try:
-        print("Initiating Project Planner Agent Graph...")
+        logger.info("Initiating Project Planner Agent Graph...")
         # Using new async structure:
         graph = await initiate_project_planner_agent_graph()
         
-        print("Invoking Project Planner Agent...")
+        logger.info("Invoking Project Planner Agent...")
         result = await invoke_project_planner_agent(graph, initial_state, thread_id=str(project["_id"]))
         
-        print("Project Planner Agent Execution Successful")
+        logger.info("Project Planner Agent Execution Successful")
         
         # Save Plan to DB
         try:
             # Compute sprint dates before saving
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             roadmap_with_dates = compute_sprint_dates(result["roadmap"], now)
             
             plan_data = ProjectPlan(
@@ -192,9 +195,9 @@ async def project_planner_agent(
                 {"$set": plan_data.model_dump()},
                 upsert=True
             )
-            print(f"✅ Project Plan saved to DB for project: {result['project_id']}")
+            logger.info("Project Plan saved to DB for project: %s", result['project_id'])
         except Exception as db_err:
-            print(f"❌ Failed to save project plan to DB: {db_err}")
+            logger.error("Failed to save project plan to DB: %s", db_err)
             # We don't raise error here to let the response go through, but log it
         
         return ProjectPlannerResponse(
@@ -205,5 +208,5 @@ async def project_planner_agent(
         )
         
     except Exception as e:
-        print(f"Agent Execution Failed: {e}")
+        logger.error("Agent Execution Failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))

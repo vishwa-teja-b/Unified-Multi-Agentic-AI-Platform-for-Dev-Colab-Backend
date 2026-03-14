@@ -2,6 +2,9 @@ import socketio
 from typing import List, Optional
 from dataclasses import dataclass
 from .events import SocketEvent, UserConnectionStatus
+import logging
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ConnectedUser:
@@ -52,7 +55,7 @@ def register_socket_handlers(sio: socketio.AsyncServer):
     @sio.event
     async def connect(sid, environ):
         # We don't authenticate here yet, we wait for 'join_request'
-        print(f"Client connected: {sid}")
+        logger.info("Client connected: %s", sid)
 
     @sio.event
     async def disconnect(sid):
@@ -76,7 +79,7 @@ def register_socket_handlers(sio: socketio.AsyncServer):
         
         # Leave room
         sio.leave_room(sid, room_id)
-        print(f"Client disconnected: {sid}")
+        logger.info("Client disconnected: %s", sid)
 
     @sio.on(SocketEvent.JOIN_REQUEST.value)
     async def handle_join_request(sid, data):
@@ -85,7 +88,7 @@ def register_socket_handlers(sio: socketio.AsyncServer):
         username = data.get("username")
         user_id = data.get("userId") # Optional auth link
         
-        print(f"Join Request: {username} -> {room_id}")
+        logger.info("Join Request: %s -> %s", username, room_id)
 
         # Basic validation
         if not room_id or not username:
@@ -241,14 +244,14 @@ def register_socket_handlers(sio: socketio.AsyncServer):
         chat_room_id = data.get("chatRoomId")
         if chat_room_id:
             await sio.enter_room(sid, f"chat_{chat_room_id}")
-            print(f"User {sid} joined chat room: chat_{chat_room_id}")
+            logger.info("User %s joined chat room: chat_%s", sid, chat_room_id)
 
     @sio.on(SocketEvent.LEAVE_CHAT.value)
     async def handle_leave_chat(sid, data):
         chat_room_id = data.get("chatRoomId")
         if chat_room_id:
             sio.leave_room(sid, f"chat_{chat_room_id}")
-            print(f"User {sid} left chat room: chat_{chat_room_id}")
+            logger.info("User %s left chat room: chat_%s", sid, chat_room_id)
             
     @sio.on(SocketEvent.SEND_MESSAGE.value)
     async def handle_send_message(sid, data):

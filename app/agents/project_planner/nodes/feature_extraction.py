@@ -3,13 +3,16 @@ from langchain_core.messages import SystemMessage, HumanMessage
 # from app.services.llm_service import get_llm
 from app.agents.llm_config import get_chat_llm_2 as get_llm
 from app.utils.llm_parser import parse_llm_output
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def feature_extraction_node(state: ProjectPlannerState) -> ProjectPlannerState:
     """
     Analyzes the project description and high-level features to extract 
     granular technical requirements.
     """
-    print("--- FEATURE REFINEMENT & EXTRACTION ---")
+    logger.info("FEATURE REFINEMENT & EXTRACTION")
     
     project_title = state.get("title", "Untitled Project")
     description = state.get("description", "")
@@ -52,10 +55,10 @@ async def feature_extraction_node(state: ProjectPlannerState) -> ProjectPlannerS
         if not isinstance(refined_features, list):
             raise ValueError("Output is not a list")
             
-        print(f"✅ Extracted {len(refined_features)} technical features.")
+        logger.info("Extracted %d technical features.", len(refined_features))
         return {"extracted_features": refined_features}
         
     except Exception as e:
-        print(f"❌ Error in feature extraction: {e}")
+        logger.error("Error in feature extraction: %s", e)
         # Fallback to base features if extraction fails
         return {"extracted_features": base_features, "error": f"Feature extraction failed: {str(e)}"}

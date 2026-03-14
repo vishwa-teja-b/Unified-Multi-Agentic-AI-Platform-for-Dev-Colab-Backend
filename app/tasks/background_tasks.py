@@ -1,7 +1,10 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.db.mongo import get_database
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def delete_old_invitations(interval_seconds: int = 600, limit_days: int = 7):
     """
@@ -17,7 +20,7 @@ async def delete_old_invitations(interval_seconds: int = 600, limit_days: int = 
             db = await get_database() 
             invitations_collection = db["invitations"] # Access collection directly or via dependency if preferred
 
-            cutoff_time = datetime.utcnow() - timedelta(days=limit_days)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(days=limit_days)
             
             # Delete query
             result = await invitations_collection.delete_many({
@@ -26,13 +29,13 @@ async def delete_old_invitations(interval_seconds: int = 600, limit_days: int = 
             })
 
             if result.deleted_count > 0:
-                print(f"[Cleanup] Deleted {result.deleted_count} old invitations.")
+                logger.info("Cleanup: Deleted %d old invitations.", result.deleted_count)
             
             else:
-                print("[Cleanup] No old invitations to delete.")
+                logger.info("Cleanup: No old invitations to delete.")
             
         except Exception as e:
-            print(f"[Cleanup Error] Error deleting old invitations: {e}")
+            logger.error("Cleanup Error: Error deleting old invitations: %s", e)
         
         # Sleep for the specified interval
         await asyncio.sleep(interval_seconds)

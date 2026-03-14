@@ -6,6 +6,9 @@ from .nodes.llm_evaluator import evaluate_candidates
 from langgraph.checkpoint.mongodb import MongoDBSaver
 import os
 from dotenv import load_dotenv
+import logging
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -40,7 +43,7 @@ async def invoke_team_formation_agent(graph, initial_state : dict, thread_id:str
 
         team_formation_agent = graph.compile(checkpointer=checkpointer)
 
-        print("Team Formation Agent Invoked")
+        logger.info("Team Formation Agent Invoked")
 
         config = {"configurable":{"thread_id" : f"{thread_id}"}}
 

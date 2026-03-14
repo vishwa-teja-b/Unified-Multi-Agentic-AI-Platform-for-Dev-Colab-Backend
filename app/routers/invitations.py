@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import Session, select
 from app.dto.invitation_schema import SendInvitation, UpdateInvitation, JoinRequest
 from app.models.teams import TeamMember
@@ -62,7 +62,7 @@ async def send_invitation(request : Request,
         "sender_id": auth_user_id, # Ensure sender is the authenticated user
         "receiver_id": receiver_id,
         "status": "PENDING",
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "updated_at": None
     })
 
@@ -97,7 +97,7 @@ async def update_invitation(request : Request,
     if new_status not in ("ACCEPTED", "REJECTED"):
         raise HTTPException(status_code=400, detail="Status must be ACCEPTED or REJECTED")
 
-    updated_at = datetime.utcnow()
+    updated_at = datetime.now(timezone.utc)
 
     result = await invitations_collection.update_one(
         {"_id" : ObjectId(request_body.invitation_id)}, 
@@ -115,7 +115,7 @@ async def update_invitation(request : Request,
         new_member = TeamMember(
             user_id=auth_user_id,
             role=role,
-            joined_at=datetime.utcnow()
+            joined_at=datetime.now(timezone.utc)
         )
 
         existing_team = await teams_collection.find_one({"project_id": project_id})
@@ -183,7 +183,7 @@ async def request_to_join(request: Request,
         "message": request_body.message,
         "type": "JOIN_REQUEST",
         "status": "PENDING",
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "updated_at": None
     }
 
@@ -246,7 +246,7 @@ async def respond_join_request(request: Request,
     # Update invitation status
     await invitations_collection.update_one(
         {"_id": ObjectId(request_body.invitation_id)},
-        {"$set": {"status": new_status, "updated_at": datetime.utcnow()}}
+        {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc)}}
     )
 
     # On ACCEPT: add member to team (single source of truth)
@@ -258,7 +258,7 @@ async def respond_join_request(request: Request,
         new_member = TeamMember(
             user_id=sender_id,
             role=role,
-            joined_at=datetime.utcnow()
+            joined_at=datetime.now(timezone.utc)
         )
 
         # Team is always created at project creation time

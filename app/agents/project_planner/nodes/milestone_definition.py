@@ -4,12 +4,15 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from app.agents.llm_config import get_chat_llm_2 as get_llm
 from app.utils.llm_parser import parse_llm_output
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def milestone_definition_node(state: ProjectPlannerState) -> ProjectPlannerState:
     """
     Groups refined features into sprints based on timeline and team size.
     """
-    print("--- MILESTONE DEFINITION ---")
+    logger.info("MILESTONE DEFINITION")
     
     project_title = state.get("title", "Project")
     features = state.get("extracted_features", [])
@@ -65,9 +68,9 @@ async def milestone_definition_node(state: ProjectPlannerState) -> ProjectPlanne
         
         milestones = parse_llm_output(content, expected_type="json")
         
-        print(f"✅ Created plan with {len(milestones)} sprints.")
+        logger.info("Created plan with %d sprints.", len(milestones))
         return {"milestones": milestones}
         
     except Exception as e:
-        print(f"❌ Error in milestone definition: {e}")
+        logger.error("Error in milestone definition: %s", e)
         return {"error": f"Milestone definition failed: {str(e)}"}

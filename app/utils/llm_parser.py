@@ -1,6 +1,9 @@
 import json
 import re
 import ast
+import logging
+
+logger = logging.getLogger(__name__)
 
 def parse_llm_output(content: str, expected_type: str = "json"):
     """
@@ -44,6 +47,6 @@ def parse_llm_output(content: str, expected_type: str = "json"):
             raise ValueError(f"Unknown expected_type: {expected_type}")
             
     except Exception as e:
-        print(f"❌ Error parsing LLM output: {e}")
-        print(f"Raw content was: {content[:100]}...") # Print preview
+        logger.error("Error parsing LLM output: %s", e)
+        logger.error("Raw content was: %s...", content[:100])
         raise e
