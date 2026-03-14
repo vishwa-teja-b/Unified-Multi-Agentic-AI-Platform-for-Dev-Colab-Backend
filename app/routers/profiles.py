@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
-from datetime import datetime
+from datetime import datetime, timezone
 from app.dependencies.collections import get_profiles_collection
 from app.dependencies.auth import get_current_user_id
 from app.dto.profile_schema import ProfileCreateRequest, ProfileResponse
@@ -58,7 +58,7 @@ async def create_profile(
     # Convert to dict and add auth_user_id from JWT
     profile_dict = profile.model_dump()
     profile_dict["auth_user_id"] = auth_user_id
-    profile_dict["updated_at"] = datetime.utcnow()
+    profile_dict["updated_at"] = datetime.now(timezone.utc)
 
     if existing_profile:
         # Upsert: Update the partial profile with full profile data
@@ -71,7 +71,7 @@ async def create_profile(
         created_profile = await profiles_collection.find_one({"auth_user_id": auth_user_id})
     else:
         # Fresh insert (fallback for edge cases)
-        profile_dict["created_at"] = datetime.utcnow()
+        profile_dict["created_at"] = datetime.now(timezone.utc)
         result = await profiles_collection.insert_one(profile_dict)
         created_profile = await profiles_collection.find_one({"_id": result.inserted_id})
     
@@ -140,7 +140,7 @@ async def update_profile(
 
     # Use the new data from request, not the existing profile
     update_dict = profile_data.model_dump()
-    update_dict["updated_at"] = datetime.utcnow()
+    update_dict["updated_at"] = datetime.now(timezone.utc)
     
     # Update the profile
     await profiles_collection.update_one(

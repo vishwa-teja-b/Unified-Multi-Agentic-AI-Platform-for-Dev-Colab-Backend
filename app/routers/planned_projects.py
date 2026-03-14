@@ -3,7 +3,7 @@ from app.dependencies.auth import get_current_user_id
 from app.dependencies.collections import get_project_plans_collection, get_projects_collection
 from app.models.project_plan import ProjectPlan
 from app.dto.project_planner_schema import UpdateTaskStatusRequest
-from datetime import datetime
+from datetime import datetime, timezone
 
 planned_projects_router = APIRouter(prefix="/api/planned-projects", tags=["Planned Projects"])
 
@@ -27,7 +27,7 @@ async def get_project_plan(
     plan_obj = ProjectPlan(**plan)
     
     # Compute current sprint number based on dates
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     current_sprint_number = 1  # Default to first sprint
     for sprint in plan_obj.roadmap:
         start_date_str = sprint.get("start_date") if isinstance(sprint, dict) else None
@@ -98,7 +98,7 @@ async def update_task_status(
         raise HTTPException(status_code=404, detail=f"Task {body.task_id} not found in roadmap")
     
     # Update timestamp
-    plan.updated_at = datetime.utcnow()
+    plan.updated_at = datetime.now(timezone.utc)
     
     # Save back to DB
     # We update the 'roadmap' field specifically

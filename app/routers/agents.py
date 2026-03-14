@@ -9,7 +9,7 @@ from app.dto.project_planner_schema import ProjectPlannerRequest, ProjectPlanner
 from app.agents.team_formation.state import TeamFormationState
 from app.dto.team_schema import TeamResponse
 from app.models.project_plan import ProjectPlan
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 import logging
 
@@ -178,7 +178,7 @@ async def project_planner_agent(
         # Save Plan to DB
         try:
             # Compute sprint dates before saving
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             roadmap_with_dates = compute_sprint_dates(result["roadmap"], now)
             
             plan_data = ProjectPlan(

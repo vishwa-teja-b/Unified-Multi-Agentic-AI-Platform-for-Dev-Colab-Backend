@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
-from datetime import datetime
+from datetime import datetime, timezone
 from bson import ObjectId
 from app.dto.project_schema import ProjectCreateRequest, ProjectResponse, ProjectUpdateRequest
 from app.models.teams import Team, TeamMember
@@ -27,7 +27,7 @@ async def create_project(
     project_dict["auth_user_id"] = auth_user_id
     project_dict["status"] = "Open"  # Default status for new projects
     project_dict["team_id"] = None  # Will be set after team creation
-    project_dict["created_at"] = datetime.utcnow()
+    project_dict["created_at"] = datetime.now(timezone.utc)
     project_dict["updated_at"] = None
     
     # Step 1: Insert project
@@ -39,7 +39,7 @@ async def create_project(
         owner_member = TeamMember(
             user_id=auth_user_id,
             role="Owner",
-            joined_at=datetime.utcnow()
+            joined_at=datetime.now(timezone.utc)
         )
 
         team = Team(
@@ -47,7 +47,7 @@ async def create_project(
             project_title=project_dict["title"],
             project_owner=auth_user_id,
             team_members=[owner_member],
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         team_result = await teams_collection.insert_one(team.model_dump())
         team_id = str(team_result.inserted_id)
@@ -139,7 +139,7 @@ async def update_project(
     
     # Use the new data from request, not the existing project
     update_dict = project_data.model_dump(exclude_unset=True)
-    update_dict["updated_at"] = datetime.utcnow()
+    update_dict["updated_at"] = datetime.now(timezone.utc)
     
     # Update the project
     

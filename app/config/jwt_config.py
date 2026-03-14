@@ -1,6 +1,6 @@
 import os
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 import logging
 
@@ -17,7 +17,7 @@ def create_access_token(user_id: int) -> str:
     payload = {
         "sub": str(user_id),  # JWT spec requires sub to be string
         "type": "access",
-        "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -25,7 +25,7 @@ def create_refresh_token(user_id: int) -> str:
     payload = {
         "sub": str(user_id),  # JWT spec requires sub to be string
         "type": "refresh",
-        "exp": datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        "exp": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 

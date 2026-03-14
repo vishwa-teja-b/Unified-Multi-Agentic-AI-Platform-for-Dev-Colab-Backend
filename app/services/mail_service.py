@@ -1,7 +1,7 @@
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from app.config.email_config import mail_config
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,4 +31,4 @@ def generate_otp():
     return secrets.randbelow(1000000)
 
 def generate_otp_expiry_time():
-    return datetime.utcnow() + timedelta(minutes=10)
+    return datetime.now(timezone.utc) + timedelta(minutes=10)

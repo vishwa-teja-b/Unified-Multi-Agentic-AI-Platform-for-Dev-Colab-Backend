@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, timezone
 from app.models.schemas import UserRegisterRequest, UserLoginRequest, RefreshTokenRequest, ForgotPasswordRequest, ResetPasswordRequest
 from app.config.jwt_config import create_access_token, create_refresh_token, decode_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.config.security import hash_password, verify_password
@@ -65,7 +65,7 @@ async def register(request: Request, data : UserRegisterRequest, session : Sessi
             "github": None,
             "linkedin": None,
             "portfolio": None,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "updated_at": None
         }
         await profiles_collection.insert_one(partial_profile)
@@ -196,7 +196,7 @@ def reset_password(data : ResetPasswordRequest, session : Session = Depends(get_
             detail="OTP already used"
         )
 
-    if token.expires_at < datetime.utcnow():
+    if token.expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=400,
             detail="OTP expired"

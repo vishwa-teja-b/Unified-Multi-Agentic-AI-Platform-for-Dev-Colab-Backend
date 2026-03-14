@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from bson import ObjectId
 from app.models.chat import ChatRoom, Message
 from app.dependencies.auth import get_current_user_id
@@ -225,7 +225,7 @@ async def send_message_to_room(
         {"_id": ObjectId(room_id)},
         {"$set": {
             "last_message": msg_dict,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(timezone.utc)
         }}
     )
     

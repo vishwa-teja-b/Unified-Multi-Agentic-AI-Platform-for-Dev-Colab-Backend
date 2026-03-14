@@ -11,7 +11,7 @@ from app.routers.profiles import profile_router
 from app.routers.projects import project_router
 from app.routers.agents import agent_router
 from sqlmodel import Session, select, or_
-from datetime import datetime
+from datetime import datetime, timezone
 from app.db.mongo import create_mongo_client
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers.invitations import invitation_router
@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 MONGO_URI = os.getenv("MONGODB_URL")
 MONGODB_NAME = os.getenv("MONGODB_DB_NAME")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 
 async def cleanup_used_otps():
     """Background worker that runs every 15 minutes to cleanup used OTPs"""
@@ -45,7 +46,7 @@ async def cleanup_used_otps():
                 select(PasswordResetToken).where(
                     or_(
                         PasswordResetToken.is_used == True,
-                        PasswordResetToken.expires_at < datetime.utcnow()
+                        PasswordResetToken.expires_at < datetime.now(timezone.utc)
                     )
                 )
             ).all()
@@ -82,7 +83,7 @@ fastapi_app = FastAPI(lifespan=lifespan)
 
 fastapi_app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development; restrict in production
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -102,7 +103,7 @@ fastapi_app.include_router(execution_router)
 # --- SOCKET.IO SETUP ---
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins='*' # Allow all origins for now
+    cors_allowed_origins=CORS_ORIGINS if CORS_ORIGINS != ['*'] else '*'
 )
 
 # Register Event Handlers

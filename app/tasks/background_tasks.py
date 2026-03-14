@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.db.mongo import get_database
 from typing import Optional
 import logging
@@ -20,7 +20,7 @@ async def delete_old_invitations(interval_seconds: int = 600, limit_days: int = 
             db = await get_database() 
             invitations_collection = db["invitations"] # Access collection directly or via dependency if preferred
 
-            cutoff_time = datetime.utcnow() - timedelta(days=limit_days)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(days=limit_days)
             
             # Delete query
             result = await invitations_collection.delete_many({
