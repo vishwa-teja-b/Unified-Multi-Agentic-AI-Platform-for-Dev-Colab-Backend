@@ -9,6 +9,28 @@ class UpdateTaskStatusRequest(BaseModel):
     task_id: str
     status: str
 
+class AddTaskRequest(BaseModel):
+    project_id: str
+    sprint_number: int
+    title: str
+    description: Optional[str] = None
+    assignee: Optional[str] = None
+    role: Optional[str] = None
+    estimate: Optional[str] = None
+    priority: Optional[str] = "Medium"
+    status: str = "todo"
+
+class UpdateTaskRequest(BaseModel):
+    project_id: str
+    task_id: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    assignee: Optional[str] = None
+    role: Optional[str] = None
+    estimate: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+
 class ProjectPlannerResponse(BaseModel):
     project_id: str
     roadmap: List[Any]

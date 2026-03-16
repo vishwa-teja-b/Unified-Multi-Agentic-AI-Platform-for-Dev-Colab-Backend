@@ -2,8 +2,9 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from app.dependencies.auth import get_current_user_id
 from app.dependencies.collections import get_project_plans_collection, get_projects_collection
 from app.models.project_plan import ProjectPlan
-from app.dto.project_planner_schema import UpdateTaskStatusRequest
+from app.dto.project_planner_schema import UpdateTaskStatusRequest, AddTaskRequest, UpdateTaskRequest
 from datetime import datetime
+import uuid
 
 planned_projects_router = APIRouter(prefix="/api/planned-projects", tags=["Planned Projects"])
 
@@ -111,3 +112,144 @@ async def update_task_status(
     )
     
     return {"message": "Task status updated successfully", "task_id": body.task_id, "new_status": body.status}
+
+@planned_projects_router.post("/tasks", status_code=201)
+async def add_task(
+    request: Request,
+    body: AddTaskRequest,
+    auth_user_id: int = Depends(get_current_user_id)
+):
+    """
+    Add a new custom task to a specific sprint in a project plan.
+    """
+    project_plans_collection = get_project_plans_collection(request)
+    
+    # Fetch the plan
+    plan_data = await project_plans_collection.find_one({"project_id": body.project_id})
+    if not plan_data:
+        raise HTTPException(status_code=404, detail="Project plan not found")
+    
+    plan = ProjectPlan(**plan_data)
+    
+    # Find the sprint
+    sprint_found = False
+    new_task = {
+        "id": f"T-CUST-{uuid.uuid4().hex[:6].upper()}",
+        "title": body.title,
+        "description": body.description,
+        "assignee": body.assignee,
+        "role": body.role,
+        "estimate": body.estimate,
+        "priority": body.priority,
+        "status": body.status
+    }
+    
+    for sprint in plan.roadmap:
+        if sprint.get("sprint_number") == body.sprint_number:
+            if "tasks" not in sprint:
+                sprint["tasks"] = []
+            sprint["tasks"].append(new_task)
+            sprint_found = True
+            break
+            
+    if not sprint_found:
+        raise HTTPException(status_code=404, detail=f"Sprint {body.sprint_number} not found")
+    
+    plan.updated_at = datetime.utcnow()
+    
+    await project_plans_collection.update_one(
+        {"project_id": body.project_id},
+        {"$set": {
+            "roadmap": plan.roadmap,
+            "updated_at": plan.updated_at
+        }}
+    )
+    
+    return {"message": "Task added successfully", "task": new_task}
+
+@planned_projects_router.put("/tasks", status_code=200)
+async def update_task(
+    request: Request,
+    body: UpdateTaskRequest,
+    auth_user_id: int = Depends(get_current_user_id)
+):
+    """
+    Update details of an existing task.
+    """
+    project_plans_collection = get_project_plans_collection(request)
+    plan_data = await project_plans_collection.find_one({"project_id": body.project_id})
+    if not plan_data:
+        raise HTTPException(status_code=404, detail="Project plan not found")
+    
+    plan = ProjectPlan(**plan_data)
+    task_found = False
+    
+    for sprint in plan.roadmap:
+        if "tasks" in sprint:
+            for task in sprint["tasks"]:
+                if task.get("id") == body.task_id:
+                    # Update fields if provided
+                    if body.title is not None: task["title"] = body.title
+                    if body.description is not None: task["description"] = body.description
+                    if body.assignee is not None: task["assignee"] = body.assignee
+                    if body.role is not None: task["role"] = body.role
+                    if body.estimate is not None: task["estimate"] = body.estimate
+                    if body.priority is not None: task["priority"] = body.priority
+                    if body.status is not None: task["status"] = body.status
+                    task_found = True
+                    break
+        if task_found: break
+            
+    if not task_found:
+        raise HTTPException(status_code=404, detail=f"Task {body.task_id} not found")
+    
+    plan.updated_at = datetime.utcnow()
+    await project_plans_collection.update_one(
+        {"project_id": body.project_id},
+        {"$set": {
+            "roadmap": plan.roadmap,
+            "updated_at": plan.updated_at
+        }}
+    )
+    
+    return {"message": "Task updated successfully"}
+
+@planned_projects_router.delete("/tasks", status_code=200)
+async def delete_task(
+    request: Request,
+    project_id: str,
+    task_id: str,
+    auth_user_id: int = Depends(get_current_user_id)
+):
+    """
+    Remove a task from the project plan.
+    """
+    project_plans_collection = get_project_plans_collection(request)
+    plan_data = await project_plans_collection.find_one({"project_id": project_id})
+    if not plan_data:
+        raise HTTPException(status_code=404, detail="Project plan not found")
+    
+    plan = ProjectPlan(**plan_data)
+    task_found = False
+    
+    for sprint in plan.roadmap:
+        if "tasks" in sprint:
+            original_len = len(sprint["tasks"])
+            sprint["tasks"] = [t for t in sprint["tasks"] if t.get("id") != task_id]
+            if len(sprint["tasks"]) < original_len:
+                task_found = True
+                break
+            
+    if not task_found:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    
+    plan.updated_at = datetime.utcnow()
+    await project_plans_collection.update_one(
+        {"project_id": project_id},
+        {"$set": {
+            "roadmap": plan.roadmap,
+            "updated_at": plan.updated_at
+        }}
+    )
+    
+    return {"message": "Task deleted successfully"}

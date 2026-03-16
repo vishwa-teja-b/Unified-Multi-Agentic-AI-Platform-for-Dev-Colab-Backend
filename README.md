@@ -60,6 +60,7 @@
 - **Sprint Locking** — Sprints auto-lock when their end date passes; tasks in locked sprints are read-only
 - **Current Sprint Detection** — Backend computes the current sprint number based on date ranges
 - **Task Status Updates** — Update individual task statuses (To Do → In Progress → Done)
+- **Manual Task Management** — Add, edit, and delete custom tasks within any sprint
 - **Async Execution** — LangGraph workflow runs asynchronously to prevent timeouts
 - **Structured Output** — Returns JSON-compliant roadmaps using `LLMParser`
 
@@ -262,7 +263,10 @@ backend/
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | `GET` | `/api/planned-projects/project/{project_id}` | 🔒 | Get generated roadmap |
+| `POST` | `/api/planned-projects/tasks` | 🔒 | Add a new manual task |
+| `PUT` | `/api/planned-projects/tasks` | 🔒 | Update/Edit an existing task |
 | `PATCH` | `/api/planned-projects/tasks` | 🔒 | Update task status |
+| `DELETE` | `/api/planned-projects/tasks` | 🔒 | Delete a task |
 
 ### Sessions (🔒 Protected)
 | Method | Endpoint | Auth | Description |
@@ -574,10 +578,11 @@ Managed via `asyncio.create_task()` in the FastAPI lifespan.
 - [x] Phase 3: Projects CRUD ✅
 - [x] Phase 4: AI Agent — Team Formation (LangGraph) ✅
 - [x] Phase 5: Invitations, Join Requests & Teams ✅
-- [x] Phase 6: AI Agent — Project Planner ✅ NEW
+- [x] Phase 6: AI Agent — Project Planner ✅
 - [x] Phase 7: Real-time collaboration (Sessions & Sockets) ✅
 - [x] Phase 8: Code editor integration (Execution Engine) ✅
 - [x] Phase 9: Whiteboard (tldraw) - Backend Ready ✅
+- [x] Phase 10: Manual Task Management & UI Refinement ✅ NEW
 
 ---
 
