@@ -9,6 +9,8 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - PISTON_API_URL=http://piston:2000/api/v2/execute
     depends_on:
       - piston
 
